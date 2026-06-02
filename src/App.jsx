@@ -4,13 +4,15 @@ import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute'; // Импортируем охранника
 import useDynamicFavicon from './hooks/useDynamicFavicon';
+import LocationSelector from './components/LocationSelector';
 
 function AppRoutes() {
   useDynamicFavicon(); // Динамическая смена favicon по роуту
 
   return (
     <Routes>
-      <Route path="/" element={<EmployeeApp />} />
+      <Route path="/" element={<LocationSelector />} />
+      <Route path="/app" element={<EmployeeApp />} />
       <Route path="/admin/login" element={<AdminLogin />} />
       
       {/* Защищаем маршрут админки */}

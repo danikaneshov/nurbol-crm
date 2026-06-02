@@ -24,7 +24,13 @@ const AdminDashboard = () => {
   
   const [newEmpName, setNewEmpName] = useState('');
   const [newEmpPin, setNewEmpPin] = useState('');
+  const [newEmpBaseSalary, setNewEmpBaseSalary] = useState(3000);
+  const [newEmpHookahBonus, setNewEmpHookahBonus] = useState(1500);
+  const [newEmpReplacementBonus, setNewEmpReplacementBonus] = useState(1500);
   const [isAdding, setIsAdding] = useState(false);
+  
+  const [editingEmpId, setEditingEmpId] = useState(null);
+  const [editEmpForm, setEditEmpForm] = useState({ baseSalary: 3000, bonus1: 1500, bonus2: 1500 });
 
   const [selectedEmpReport, setSelectedEmpReport] = useState(null);
 
@@ -267,7 +273,9 @@ const AdminDashboard = () => {
         uploadedImageUrl = cloudData.secure_url;
       }
 
-      const ownerBase = emp.name.trim().toLowerCase() === 'tamerlan' ? 1500 : 3000;
+      const ownerBase = emp.baseSalary !== undefined ? emp.baseSalary : (emp.name.trim().toLowerCase() === 'tamerlan' ? 1500 : 3000);
+      const ownerBonus1 = emp.bonus1 !== undefined ? emp.bonus1 : 1500;
+      const ownerBonus2 = emp.bonus2 !== undefined ? emp.bonus2 : 1500;
 
       let partner = null;
       let c1 = Number(debugShift.hookahs) || 0;
@@ -276,7 +284,9 @@ const AdminDashboard = () => {
 
       if (debugShift.partnerId) {
         partner = employees.find(e => e.id === debugShift.partnerId);
-        const partnerBase = 1500; // Напарник всегда получает оклад 1500
+        const partnerBase = partner.baseSalary !== undefined ? partner.baseSalary : 1500;
+        const partnerBonus1 = partner.bonus1 !== undefined ? partner.bonus1 : 1500;
+        const partnerBonus2 = partner.bonus2 !== undefined ? partner.bonus2 : 1500;
         
         let targetOwnerTotal = Math.ceil((c1 + c2) / 2);
         let ownerC1 = Math.ceil(c1 / 2);
@@ -285,17 +295,17 @@ const AdminDashboard = () => {
         let partnerC2 = c2 - ownerC2;
 
         let partnerTotalItems = partnerC1 + partnerC2;
-        let partnerEarned = partnerBase + (partnerC1 * 1500) + (partnerC2 * 1500);
+        let partnerEarned = partnerBase + (partnerC1 * partnerBonus1) + (partnerC2 * partnerBonus2);
 
         let ownerTotalItems = ownerC1 + ownerC2;
-        let ownerEarned = ownerBase + (ownerC1 * 1500) + (ownerC2 * 1500);
+        let ownerEarned = ownerBase + (ownerC1 * ownerBonus1) + (ownerC2 * ownerBonus2);
         
         await addDoc(collection(db, 'sales'), {
           employeeId: partner.id, employeeName: partner.name,
           dateStr: dStr, endTime: serverTimestamp(), photoUrl: uploadedImageUrl,
           items: { cocktail1: partnerC1, cocktail2: partnerC2 },
           totalItems: partnerTotalItems, earned: partnerEarned,
-          baseSalary: partnerBase, hookahPercentage: (partnerC1 * 1500) + (partnerC2 * 1500),
+          baseSalary: partnerBase, hookahPercentage: (partnerC1 * partnerBonus1) + (partnerC2 * partnerBonus2),
           shiftFraction: 0.5,
           status: 'closed'
         });
@@ -305,19 +315,19 @@ const AdminDashboard = () => {
           dateStr: dStr, startTime: serverTimestamp(), endTime: serverTimestamp(), photoUrl: uploadedImageUrl,
           items: { cocktail1: ownerC1, cocktail2: ownerC2 },
           totalItems: ownerTotalItems, earned: ownerEarned,
-          baseSalary: ownerBase, hookahPercentage: (ownerC1 * 1500) + (ownerC2 * 1500),
+          baseSalary: ownerBase, hookahPercentage: (ownerC1 * ownerBonus1) + (ownerC2 * ownerBonus2),
           shiftFraction: 1,
           status: 'closed'
         });
 
       } else {
-        let myEarned = ownerBase + (c1 * 1500) + (c2 * 1500);
+        let myEarned = ownerBase + (c1 * ownerBonus1) + (c2 * ownerBonus2);
         await addDoc(collection(db, 'sales'), {
           employeeId: emp.id, employeeName: emp.name,
           dateStr: dStr, startTime: serverTimestamp(), endTime: serverTimestamp(), photoUrl: uploadedImageUrl,
           items: { cocktail1: c1, cocktail2: c2 },
           totalItems: myTotalItems, earned: myEarned,
-          baseSalary: ownerBase, hookahPercentage: (c1 * 1500) + (c2 * 1500),
+          baseSalary: ownerBase, hookahPercentage: (c1 * ownerBonus1) + (c2 * ownerBonus2),
           shiftFraction: 1,
           status: 'closed'
         });
@@ -342,10 +352,25 @@ const AdminDashboard = () => {
     try {
       await addDoc(collection(db, 'employees'), {
         name: newEmpName, pin: newEmpPin.toString(),
-        createdAt: serverTimestamp(), baseSalary: 3000, bonus1: 1500, bonus2: 1500
+        createdAt: serverTimestamp(), 
+        baseSalary: Number(newEmpBaseSalary), 
+        bonus1: Number(newEmpHookahBonus), 
+        bonus2: Number(newEmpReplacementBonus)
       });
       setNewEmpName(''); setNewEmpPin('');
+      setNewEmpBaseSalary(3000); setNewEmpHookahBonus(1500); setNewEmpReplacementBonus(1500);
     } catch (error) { console.error(error); } finally { setIsAdding(false); }
+  };
+
+  const handleSaveEmpEdit = async (empId) => {
+    try {
+      await updateDoc(doc(db, 'employees', empId), {
+        baseSalary: Number(editEmpForm.baseSalary),
+        bonus1: Number(editEmpForm.bonus1),
+        bonus2: Number(editEmpForm.bonus2)
+      });
+      setEditingEmpId(null);
+    } catch (error) { alert('Ошибка при сохранении: ' + error.message); }
   };
 
   const calculateEmployeeStats = useCallback((empId, month = selectedMonth) => {
@@ -485,7 +510,9 @@ const AdminDashboard = () => {
       const c1 = Number(editForm.hookahs) || 0;
       const c2 = Number(editForm.replacements) || 0;
       const ownerEmp = employees.find(e => e.id === ownerRecord.employeeId);
-      const ownerBase = ownerEmp?.name?.trim().toLowerCase() === 'tamerlan' ? 1500 : 3000;
+      const ownerBase = ownerEmp?.baseSalary !== undefined ? ownerEmp.baseSalary : (ownerEmp?.name?.trim().toLowerCase() === 'tamerlan' ? 1500 : 3000);
+      const ownerBonus1 = ownerEmp?.bonus1 !== undefined ? ownerEmp.bonus1 : 1500;
+      const ownerBonus2 = ownerEmp?.bonus2 !== undefined ? ownerEmp.bonus2 : 1500;
 
       // Определяем нового напарника
       const newPartnerId = editForm.partnerId;
@@ -496,7 +523,9 @@ const AdminDashboard = () => {
         // С напарником: делим позиции
         const partner = employees.find(e => e.id === newPartnerId);
         if (!partner) throw new Error('Напарник не найден');
-        const partnerBase = 1500;
+        const partnerBase = partner.baseSalary !== undefined ? partner.baseSalary : 1500;
+        const partnerBonus1 = partner.bonus1 !== undefined ? partner.bonus1 : 1500;
+        const partnerBonus2 = partner.bonus2 !== undefined ? partner.bonus2 : 1500;
 
         const ownerC1 = Math.ceil(c1 / 2);
         const targetOwnerTotal = Math.ceil((c1 + c2) / 2);
@@ -505,9 +534,9 @@ const AdminDashboard = () => {
         const partnerC2 = c2 - ownerC2;
 
         const ownerTotalItems = ownerC1 + ownerC2;
-        const ownerEarned = ownerBase + (ownerC1 * 1500) + (ownerC2 * 1500);
+        const ownerEarned = ownerBase + (ownerC1 * ownerBonus1) + (ownerC2 * ownerBonus2);
         const partnerTotalItems = partnerC1 + partnerC2;
-        const partnerEarned = partnerBase + (partnerC1 * 1500) + (partnerC2 * 1500);
+        const partnerEarned = partnerBase + (partnerC1 * partnerBonus1) + (partnerC2 * partnerBonus2);
 
         // Обновляем запись владельца
         await updateDoc(doc(db, 'sales', ownerRecord.id), {
@@ -515,7 +544,7 @@ const AdminDashboard = () => {
           totalItems: ownerTotalItems,
           earned: ownerEarned,
           baseSalary: ownerBase,
-          hookahPercentage: (ownerC1 * 1500) + (ownerC2 * 1500),
+          hookahPercentage: (ownerC1 * ownerBonus1) + (ownerC2 * ownerBonus2),
           shiftFraction: 1,
           partnerId: newPartnerId
         });
@@ -527,7 +556,7 @@ const AdminDashboard = () => {
             totalItems: partnerTotalItems,
             earned: partnerEarned,
             baseSalary: partnerBase,
-            hookahPercentage: (partnerC1 * 1500) + (partnerC2 * 1500),
+            hookahPercentage: (partnerC1 * partnerBonus1) + (partnerC2 * partnerBonus2),
             shiftFraction: 0.5
           });
         } else {
@@ -545,7 +574,7 @@ const AdminDashboard = () => {
             totalItems: partnerTotalItems,
             earned: partnerEarned,
             baseSalary: partnerBase,
-            hookahPercentage: (partnerC1 * 1500) + (partnerC2 * 1500),
+            hookahPercentage: (partnerC1 * partnerBonus1) + (partnerC2 * partnerBonus2),
             shiftFraction: 0.5,
             status: 'closed'
           });
@@ -553,14 +582,14 @@ const AdminDashboard = () => {
       } else {
         // Без напарника: все позиции владельцу
         const myTotalItems = c1 + c2;
-        const myEarned = ownerBase + (c1 * 1500) + (c2 * 1500);
+        const myEarned = ownerBase + (c1 * ownerBonus1) + (c2 * ownerBonus2);
 
         await updateDoc(doc(db, 'sales', ownerRecord.id), {
           items: { cocktail1: c1, cocktail2: c2 },
           totalItems: myTotalItems,
           earned: myEarned,
           baseSalary: ownerBase,
-          hookahPercentage: (c1 * 1500) + (c2 * 1500),
+          hookahPercentage: (c1 * ownerBonus1) + (c2 * ownerBonus2),
           shiftFraction: 1,
           partnerId: ''
         });
@@ -1529,13 +1558,100 @@ const AdminDashboard = () => {
               <h2 className="text-xl font-black mb-6">Добавить мастера</h2>
               <form onSubmit={handleAddEmployee} className="space-y-4">
                 <input type="text" value={newEmpName} onChange={e=>setNewEmpName(e.target.value)} placeholder="Имя мастера" className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold" required />
-                <div className="flex gap-2"><input type="text" maxLength="4" value={newEmpPin} onChange={e=>setNewEmpPin(e.target.value.replace(/\D/g, ''))} placeholder="PIN" className="w-full p-4 bg-slate-50 rounded-2xl border-none text-center font-mono font-bold" required /><button type="button" onClick={generatePin} className="p-4 bg-slate-100 rounded-2xl"><Key size={20}/></button></div>
-                <button type="submit" disabled={isAdding || !newEmpName || newEmpPin.length !== 4} className="w-full p-4 bg-blue-600 text-white rounded-2xl font-bold disabled:bg-blue-300">Создать аккаунт</button>
+                <div className="flex gap-2">
+                  <input type="text" maxLength="4" value={newEmpPin} onChange={e=>setNewEmpPin(e.target.value.replace(/\D/g, ''))} placeholder="PIN" className="w-full p-4 bg-slate-50 rounded-2xl border-none text-center font-mono font-bold" required />
+                  <button type="button" onClick={generatePin} className="p-4 bg-slate-100 rounded-2xl"><Key size={20}/></button>
+                </div>
+                <div className="space-y-3 mt-4 border-t border-slate-100 pt-4">
+                  <h3 className="text-sm font-bold text-slate-800">Ставки (₸)</h3>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">Оклад</label>
+                    <input type="number" min="0" value={newEmpBaseSalary} onChange={e=>setNewEmpBaseSalary(e.target.value)} className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold" required />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">За кальян</label>
+                      <input type="number" min="0" value={newEmpHookahBonus} onChange={e=>setNewEmpHookahBonus(e.target.value)} className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold" required />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">За замену</label>
+                      <input type="number" min="0" value={newEmpReplacementBonus} onChange={e=>setNewEmpReplacementBonus(e.target.value)} className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold" required />
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" disabled={isAdding || !newEmpName || newEmpPin.length !== 4} className="w-full p-4 mt-2 bg-blue-600 text-white rounded-2xl font-bold disabled:bg-blue-300">Создать аккаунт</button>
               </form>
             </div>
-            <div className="col-span-1 lg:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-x-auto">
-              <table className="w-full min-w-[500px]"><thead><tr className="bg-slate-50"><th className="p-6 text-left text-xs font-black text-slate-400 uppercase">Мастер</th><th className="p-6 text-left text-xs font-black text-slate-400 uppercase">Доступ</th><th className="p-6 text-left text-xs font-black text-slate-400 uppercase">Статус</th><th className="p-6"></th></tr></thead>
-              <tbody className="divide-y divide-slate-50">{employees.map(emp => (<tr key={emp.id} className={emp.isArchived ? 'opacity-50 bg-slate-50/50' : ''}><td className="p-6 font-bold text-slate-900">{emp.name}</td><td className="p-6 font-mono text-slate-500">{emp.pin}</td><td className="p-6">{emp.isArchived ? <span className="text-xs bg-slate-200 text-slate-500 px-3 py-1 rounded-full font-bold">Архив</span> : <span className="text-xs bg-green-100 text-green-600 px-3 py-1 rounded-full font-bold">Активен</span>}</td><td className="p-6 text-right">{emp.isArchived ? (<button onClick={() => updateDoc(doc(db, 'employees', emp.id), { isArchived: false })} className="text-xs font-bold text-green-500 hover:text-green-700 px-3 py-1.5 bg-green-50 rounded-xl hover:bg-green-100 transition-colors">Восстановить</button>) : (<button onClick={() => { if (window.confirm(`Деактивировать ${emp.name}? Все данные по ЗП сохранятся.`)) updateDoc(doc(db, 'employees', emp.id), { isArchived: true }); }} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>)}</td></tr>))}</tbody></table>
+            
+            <div className="col-span-1 lg:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {employees.map(emp => (
+                  <Card key={emp.id} className={`p-6 border-2 transition-all ${emp.isArchived ? 'opacity-60 bg-slate-50 border-transparent' : 'bg-white border-slate-100 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1'}`}>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-bold text-lg text-slate-900">{emp.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="px-2 py-1 bg-slate-100 rounded-lg text-xs font-mono font-bold text-slate-500">PIN: {emp.pin}</span>
+                          {emp.isArchived ? 
+                            <span className="px-2 py-1 bg-slate-200 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-wider">Архив</span> : 
+                            <span className="px-2 py-1 bg-green-100 text-green-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">Активен</span>
+                          }
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {editingEmpId !== emp.id && !emp.isArchived && (
+                          <button onClick={() => { setEditingEmpId(emp.id); setEditEmpForm({ baseSalary: emp.baseSalary || 0, bonus1: emp.bonus1 || 0, bonus2: emp.bonus2 || 0 }); }} className="p-2 bg-blue-50 text-blue-500 rounded-xl hover:bg-blue-100 transition-colors" title="Редактировать">
+                            <Edit3 size={16}/>
+                          </button>
+                        )}
+                        {emp.isArchived ? (
+                          <button onClick={() => updateDoc(doc(db, 'employees', emp.id), { isArchived: false })} className="p-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors" title="Восстановить"><RotateCcw size={16}/></button>
+                        ) : (
+                          <button onClick={() => { if (window.confirm(`Деактивировать ${emp.name}?`)) updateDoc(doc(db, 'employees', emp.id), { isArchived: true }); }} className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors" title="В архив"><Trash2 size={16}/></button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {editingEmpId === emp.id ? (
+                      <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 mt-2 animate-in fade-in zoom-in-95 duration-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Оклад (₸)</label>
+                          <input type="number" value={editEmpForm.baseSalary} onChange={e=>setEditEmpForm({...editEmpForm, baseSalary: e.target.value})} className="w-full p-2.5 bg-white rounded-xl border border-slate-200 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">За кальян (₸)</label>
+                            <input type="number" value={editEmpForm.bonus1} onChange={e=>setEditEmpForm({...editEmpForm, bonus1: e.target.value})} className="w-full p-2.5 bg-white rounded-xl border border-slate-200 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">За замену (₸)</label>
+                            <input type="number" value={editEmpForm.bonus2} onChange={e=>setEditEmpForm({...editEmpForm, bonus2: e.target.value})} className="w-full p-2.5 bg-white rounded-xl border border-slate-200 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button onClick={() => setEditingEmpId(null)} className="flex-1 py-2.5 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition-colors">Отмена</button>
+                          <button onClick={() => handleSaveEmpEdit(emp.id)} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-200 hover:bg-blue-700 transition-colors">Сохранить</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 mt-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Оклад</p>
+                          <p className="font-black text-slate-800 text-sm">{formatMoney(emp.baseSalary || 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Кальян</p>
+                          <p className="font-black text-slate-800 text-sm">{formatMoney(emp.bonus1 || 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Замена</p>
+                          <p className="font-black text-slate-800 text-sm">{formatMoney(emp.bonus2 || 0)}</p>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
             </div>
           </div>
             )}
@@ -1637,17 +1753,23 @@ const AdminDashboard = () => {
                   const c2 = Number(editForm.replacements) || 0;
                   const ownerRecord = selectedEmpReport.records.find(r => r.startTime) || selectedEmpReport.records[0];
                   const ownerEmp = employees.find(e => e.id === ownerRecord.employeeId);
-                  const ownerBase = ownerEmp?.name?.trim().toLowerCase() === 'tamerlan' ? 1500 : 3000;
+                  const ownerBase = ownerEmp?.baseSalary !== undefined ? ownerEmp.baseSalary : (ownerEmp?.name?.trim().toLowerCase() === 'tamerlan' ? 1500 : 3000);
+                  const ownerBonus1 = ownerEmp?.bonus1 !== undefined ? ownerEmp.bonus1 : 1500;
+                  const ownerBonus2 = ownerEmp?.bonus2 !== undefined ? ownerEmp.bonus2 : 1500;
 
                   if (editForm.partnerId) {
                     const partner = employees.find(e => e.id === editForm.partnerId);
+                    const partnerBase = partner.baseSalary !== undefined ? partner.baseSalary : 1500;
+                    const partnerBonus1 = partner.bonus1 !== undefined ? partner.bonus1 : 1500;
+                    const partnerBonus2 = partner.bonus2 !== undefined ? partner.bonus2 : 1500;
+                    
                     const ownerC1 = Math.ceil(c1 / 2);
                     const targetOwnerTotal = Math.ceil((c1 + c2) / 2);
                     const ownerC2 = targetOwnerTotal - ownerC1;
                     const partnerC1 = c1 - ownerC1;
                     const partnerC2 = c2 - ownerC2;
-                    const ownerEarned = ownerBase + (ownerC1 * 1500) + (ownerC2 * 1500);
-                    const partnerEarned = 1500 + (partnerC1 * 1500) + (partnerC2 * 1500);
+                    const ownerEarned = ownerBase + (ownerC1 * ownerBonus1) + (ownerC2 * ownerBonus2);
+                    const partnerEarned = partnerBase + (partnerC1 * partnerBonus1) + (partnerC2 * partnerBonus2);
                     return (
                       <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl space-y-2">
                         <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest">Превью пересчёта</h4>
@@ -1656,7 +1778,7 @@ const AdminDashboard = () => {
                       </div>
                     );
                   } else {
-                    const myEarned = ownerBase + (c1 * 1500) + (c2 * 1500);
+                    const myEarned = ownerBase + (c1 * ownerBonus1) + (c2 * ownerBonus2);
                     return (
                       <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl space-y-2">
                         <h4 className="text-xs font-bold text-blue-400 uppercase tracking-widest">Превью пересчёта</h4>

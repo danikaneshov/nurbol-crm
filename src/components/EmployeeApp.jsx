@@ -46,7 +46,14 @@ const EmployeeApp = () => {
 
   useEffect(() => {
     const unsubEmp = onSnapshot(collection(db, 'employees'), (snap) => {
-      setEmployeesList(snap.docs.map(doc => ({ id: doc.id, name: doc.data().name, isArchived: doc.data().isArchived || false })));
+      setEmployeesList(snap.docs.map(doc => ({ 
+        id: doc.id, 
+        name: doc.data().name, 
+        isArchived: doc.data().isArchived || false,
+        baseSalary: doc.data().baseSalary,
+        bonus1: doc.data().bonus1,
+        bonus2: doc.data().bonus2
+      })));
     }, (err) => {
       console.error('Firestore employees listener error:', err);
     });
@@ -256,9 +263,11 @@ const EmployeeApp = () => {
         return;
       }
 
+      const currentLocationId = localStorage.getItem('currentLocation') || 'loc1';
       await addDoc(collection(db, 'sales'), {
         employeeId: employee.id, employeeName: employee.name,
-        dateStr: todayStr, startTime: serverTimestamp(), status: 'open'
+        dateStr: todayStr, startTime: serverTimestamp(), status: 'open',
+        locationId: currentLocationId
       });
     } catch { 
       setModal({ isOpen: true, type: 'error', title: 'Ошибка', message: 'Не удалось открыть смену' }); 
@@ -273,13 +282,18 @@ const EmployeeApp = () => {
   const closeShiftInDb = async (c1, c2, imageUrl) => {
     let myEarned;
     let myTotalItems;
-    const myBase = employee.name.trim().toLowerCase() === 'tamerlan' ? 1500 : 3000;
+    const myBase = employee.baseSalary !== undefined ? employee.baseSalary : (employee.name.trim().toLowerCase() === 'tamerlan' ? 1500 : 3000);
+    const myBonus1 = employee.bonus1 !== undefined ? employee.bonus1 : 1500;
+    const myBonus2 = employee.bonus2 !== undefined ? employee.bonus2 : 1500;
 
     let ownerC1 = c1, ownerC2 = c2;
     let partnerC1, partnerC2;
 
     if (partnerId) {
       const partner = employeesList.find(emp => emp.id === partnerId);
+      const partnerBase = partner?.baseSalary !== undefined ? partner.baseSalary : 1500;
+      const partnerBonus1 = partner?.bonus1 !== undefined ? partner.bonus1 : 1500;
+      const partnerBonus2 = partner?.bonus2 !== undefined ? partner.bonus2 : 1500;
       
       // Рассчитываем так, чтобы общее количество позиций делилось поровну,
       // а если нечетно — владельцу (кто открыл) досталась 1 лишняя позиция.
@@ -291,7 +305,7 @@ const EmployeeApp = () => {
       partnerC2 = c2 - ownerC2;
 
       myTotalItems = ownerC1 + ownerC2;
-      myEarned = myBase + (ownerC1 * 1500) + (ownerC2 * 1500);
+      myEarned = myBase + (ownerC1 * myBonus1) + (ownerC2 * myBonus2);
       
       const partnerTotalItems = partnerC1 + partnerC2;
       
@@ -300,21 +314,22 @@ const EmployeeApp = () => {
         dateStr: currentShift.dateStr,
         endTime: serverTimestamp(), photoUrl: imageUrl,
         items: { cocktail1: partnerC1, cocktail2: partnerC2 },
-        totalItems: partnerTotalItems, earned: 1500 + (partnerC1 * 1500) + (partnerC2 * 1500),
-        baseSalary: 1500, hookahPercentage: (partnerC1 * 1500) + (partnerC2 * 1500),
+        totalItems: partnerTotalItems, earned: partnerBase + (partnerC1 * partnerBonus1) + (partnerC2 * partnerBonus2),
+        baseSalary: partnerBase, hookahPercentage: (partnerC1 * partnerBonus1) + (partnerC2 * partnerBonus2),
         shiftFraction: 0.5,
-        status: 'closed'
+        status: 'closed',
+        locationId: currentShift.locationId || localStorage.getItem('currentLocation') || 'loc1'
       });
     } else {
       myTotalItems = c1 + c2;
-      myEarned = myBase + (c1 * 1500) + (c2 * 1500);
+      myEarned = myBase + (c1 * myBonus1) + (c2 * myBonus2);
     }
 
     await updateDoc(doc(db, 'sales', currentShift.id), {
       status: 'closed', endTime: serverTimestamp(), photoUrl: imageUrl,
       items: { cocktail1: ownerC1, cocktail2: ownerC2 },
       totalItems: myTotalItems, earned: myEarned,
-      baseSalary: myBase, hookahPercentage: (ownerC1 * 1500) + (ownerC2 * 1500),
+      baseSalary: myBase, hookahPercentage: (ownerC1 * myBonus1) + (ownerC2 * myBonus2),
       shiftFraction: 1
     });
 
