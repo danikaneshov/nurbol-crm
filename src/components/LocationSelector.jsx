@@ -3,20 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, ChevronRight, Sparkles } from 'lucide-react';
 import { Card } from './ui/Card';
 
-const LOCATIONS = [
-  { id: 'loc1', name: 'Основная точка', address: 'ул. Абая, 12', isActive: true },
-  { id: 'loc2', name: 'Вторая точка', address: 'ул. Достык, 89', isActive: true },
-];
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const LocationSelector = () => {
   const navigate = useNavigate();
   const [selectedLoc, setSelectedLoc] = useState(null);
+  const [locations, setLocations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // If a location is already selected, we could theoretically redirect
-    // but the user might want to change it. Let's keep it manual for now.
     const savedLoc = localStorage.getItem('currentLocation');
     if (savedLoc) setSelectedLoc(savedLoc);
+
+    const q = query(collection(db, 'locations'), where('isActive', '==', true));
+    const unsub = onSnapshot(q, (snap) => {
+      setLocations(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setIsLoading(false);
+    });
+
+    return () => unsub();
   }, []);
 
   const handleSelect = (locId) => {
@@ -36,44 +42,56 @@ const LocationSelector = () => {
         </div>
 
         <div className="space-y-4">
-          {LOCATIONS.map((loc, idx) => (
-            <button
-              key={loc.id}
-              onClick={() => handleSelect(loc.id)}
-              className={`w-full group text-left transition-all duration-300 animate-in fade-in slide-in-bottom-4`}
-              style={{ animationDelay: `${idx * 100}ms` }}
-            >
-              <Card 
-                className={`p-6 border-2 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 relative overflow-hidden ${
-                  selectedLoc === loc.id 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-transparent bg-white hover:border-primary/20'
-                }`}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+              <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin mb-4"></div>
+              <p className="font-bold">Загрузка локаций...</p>
+            </div>
+          ) : locations.length === 0 ? (
+            <div className="text-center py-10 bg-white rounded-[32px] border border-slate-100">
+              <p className="text-slate-500 font-bold">Активные локации не найдены.</p>
+              <p className="text-sm text-slate-400 mt-2">Добавьте их через панель администратора.</p>
+            </div>
+          ) : (
+            locations.map((loc, idx) => (
+              <button
+                key={loc.id}
+                onClick={() => handleSelect(loc.id)}
+                className={`w-full group text-left transition-all duration-300 animate-in fade-in slide-in-bottom-4`}
+                style={{ animationDelay: `${idx * 100}ms` }}
               >
-                {selectedLoc === loc.id && (
-                  <div className="absolute top-0 right-0 p-4 opacity-20">
-                    <Sparkles className="w-24 h-24 text-primary" />
-                  </div>
-                )}
-                <div className="flex items-center justify-between relative z-10">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300 ${
-                      selectedLoc === loc.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-primary/10 group-hover:text-primary'
-                    }`}>
-                      <MapPin size={24} />
+                <Card 
+                  className={`p-6 border-2 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 relative overflow-hidden ${
+                    selectedLoc === loc.id 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-transparent bg-white hover:border-primary/20'
+                  }`}
+                >
+                  {selectedLoc === loc.id && (
+                    <div className="absolute top-0 right-0 p-4 opacity-20">
+                      <Sparkles className="w-24 h-24 text-primary" />
                     </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-slate-900">{loc.name}</h3>
-                      <p className="text-sm font-medium text-slate-400">{loc.address}</p>
+                  )}
+                  <div className="flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300 ${
+                        selectedLoc === loc.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-primary/10 group-hover:text-primary'
+                      }`}>
+                        <MapPin size={24} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg text-slate-900">{loc.name}</h3>
+                        <p className="text-sm font-medium text-slate-400">{loc.address}</p>
+                      </div>
                     </div>
+                    <ChevronRight className={`transition-transform duration-300 ${
+                      selectedLoc === loc.id ? 'text-primary translate-x-1' : 'text-slate-300 group-hover:text-primary group-hover:translate-x-1'
+                    }`} />
                   </div>
-                  <ChevronRight className={`transition-transform duration-300 ${
-                    selectedLoc === loc.id ? 'text-primary translate-x-1' : 'text-slate-300 group-hover:text-primary group-hover:translate-x-1'
-                  }`} />
-                </div>
-              </Card>
-            </button>
-          ))}
+                </Card>
+              </button>
+            ))
+          )}
         </div>
 
         <div className="mt-12 text-center">

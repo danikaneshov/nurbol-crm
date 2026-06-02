@@ -20,6 +20,12 @@ const AdminDashboard = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [employees, setEmployees] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [newLocName, setNewLocName] = useState('');
+  const [newLocAddress, setNewLocAddress] = useState('');
+  const [isAddingLoc, setIsAddingLoc] = useState(false);
+  const [editingLocId, setEditingLocId] = useState(null);
+  const [editLocForm, setEditLocForm] = useState({ name: '', address: '' });
   const [allShifts, setAllShifts] = useState([]);
   
   const [newEmpName, setNewEmpName] = useState('');
@@ -181,6 +187,10 @@ const AdminDashboard = () => {
       setEmployees(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
+    const unsubLoc = onSnapshot(query(collection(db, 'locations'), orderBy('createdAt', 'desc')), (snap) => {
+      setLocations(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
     // Загружаем все продажи, фильтрация по месяцу — на клиенте (через endsWith),
     // т.к. формат DD.MM.YYYY некорректно работает с Firestore where() сравнением строк.
     const salesQuery = query(collection(db, 'sales'), orderBy('dateStr', 'desc'), limit(1000));
@@ -200,7 +210,9 @@ const AdminDashboard = () => {
       if (docSnap.exists()) setOwnerProfits(docSnap.data());
     });
 
-    return () => { unsubEmp(); unsubSales(); unsubSettings(); };
+    return () => {
+      unsubSales(); unsubEmp(); unsubSettings(); unsubLoc();
+    };
   }, []);
 
   useEffect(() => {
@@ -370,6 +382,31 @@ const AdminDashboard = () => {
         bonus2: Number(editEmpForm.bonus2)
       });
       setEditingEmpId(null);
+    } catch (error) { alert('Ошибка при сохранении: ' + error.message); }
+  };
+
+  const handleAddLocation = async (e) => {
+    e.preventDefault();
+    if (!newLocName) return;
+    setIsAddingLoc(true);
+    try {
+      await addDoc(collection(db, 'locations'), {
+        name: newLocName,
+        address: newLocAddress,
+        isActive: true,
+        createdAt: serverTimestamp()
+      });
+      setNewLocName(''); setNewLocAddress('');
+    } catch (error) { alert('Ошибка: ' + error.message); } finally { setIsAddingLoc(false); }
+  };
+
+  const handleSaveLocEdit = async (locId) => {
+    try {
+      await updateDoc(doc(db, 'locations', locId), {
+        name: editLocForm.name,
+        address: editLocForm.address
+      });
+      setEditingLocId(null);
     } catch (error) { alert('Ошибка при сохранении: ' + error.message); }
   };
 
@@ -1548,6 +1585,7 @@ const AdminDashboard = () => {
           <div className="space-y-8 animate-in fade-in duration-300">
             <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm scrollable-tabs">
               <button onClick={() => setSubTab('employees')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'employees' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Персонал</button>
+              <button onClick={() => setSubTab('locations')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'locations' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Локации</button>
               <button onClick={() => setSubTab('margins')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'margins' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Маржинальность</button>
               <button onClick={() => setSubTab('debug')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'debug' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Debug</button>
             </div>
@@ -1646,6 +1684,75 @@ const AdminDashboard = () => {
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Замена</p>
                           <p className="font-black text-slate-800 text-sm">{formatMoney(emp.bonus2 || 0)}</p>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+            )}
+
+            {subTab === 'locations' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm h-fit">
+              <h2 className="text-xl font-black mb-6">Добавить локацию</h2>
+              <form onSubmit={handleAddLocation} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">Название точки</label>
+                  <input type="text" value={newLocName} onChange={e=>setNewLocName(e.target.value)} placeholder="Напр. Основная" className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold" required />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">Адрес (опционально)</label>
+                  <input type="text" value={newLocAddress} onChange={e=>setNewLocAddress(e.target.value)} placeholder="Напр. ул. Абая, 12" className="w-full p-4 bg-slate-50 rounded-2xl border-none font-medium" />
+                </div>
+                <button type="submit" disabled={isAddingLoc || !newLocName} className="w-full p-4 mt-2 bg-blue-600 text-white rounded-2xl font-bold disabled:bg-blue-300">Добавить</button>
+              </form>
+            </div>
+            
+            <div className="col-span-1 lg:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {locations.map(loc => (
+                  <Card key={loc.id} className={`p-6 border-2 transition-all ${!loc.isActive ? 'opacity-60 bg-slate-50 border-transparent' : 'bg-white border-slate-100 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1'}`}>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-bold text-lg text-slate-900">{loc.name}</h3>
+                        <p className="text-sm font-medium text-slate-400 mt-1">{loc.address || 'Адрес не указан'}</p>
+                        <div className="mt-2">
+                          {!loc.isActive ? 
+                            <span className="px-2 py-1 bg-slate-200 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-wider">В архиве</span> : 
+                            <span className="px-2 py-1 bg-green-100 text-green-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">Активна</span>
+                          }
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {editingLocId !== loc.id && loc.isActive && (
+                          <button onClick={() => { setEditingLocId(loc.id); setEditLocForm({ name: loc.name || '', address: loc.address || '' }); }} className="p-2 bg-blue-50 text-blue-500 rounded-xl hover:bg-blue-100 transition-colors" title="Редактировать">
+                            <Edit3 size={16}/>
+                          </button>
+                        )}
+                        {!loc.isActive ? (
+                          <button onClick={() => updateDoc(doc(db, 'locations', loc.id), { isActive: true })} className="p-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors" title="Восстановить"><RotateCcw size={16}/></button>
+                        ) : (
+                          <button onClick={() => { if (window.confirm(`Отправить в архив точку ${loc.name}?`)) updateDoc(doc(db, 'locations', loc.id), { isActive: false }); }} className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors" title="В архив"><Trash2 size={16}/></button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {editingLocId === loc.id && (
+                      <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 mt-4 animate-in fade-in zoom-in-95 duration-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Название</label>
+                          <input type="text" value={editLocForm.name} onChange={e=>setEditLocForm({...editLocForm, name: e.target.value})} className="w-full p-2.5 bg-white rounded-xl border border-slate-200 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Адрес</label>
+                          <input type="text" value={editLocForm.address} onChange={e=>setEditLocForm({...editLocForm, address: e.target.value})} className="w-full p-2.5 bg-white rounded-xl border border-slate-200 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button onClick={() => setEditingLocId(null)} className="flex-1 py-2.5 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition-colors">Отмена</button>
+                          <button onClick={() => handleSaveLocEdit(loc.id)} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-200 hover:bg-blue-700 transition-colors">Сохранить</button>
                         </div>
                       </div>
                     )}
