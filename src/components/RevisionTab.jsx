@@ -21,7 +21,15 @@ const getCurrentMonthStr = () => {
   return `${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
 };
 
-const RevisionTab = ({ locationId, locations, tobaccoTypes, allShifts, invStandards }) => {
+const RevisionTab = ({ locationId, locations, tobaccoTemplates = [], allShifts, invStandards }) => {
+  // Нормализуем шаблоны: считаем цену за грамм из amount и price шаблона
+  const tobaccoTypes = tobaccoTemplates.map(t => ({
+    id: t.id,
+    name: t.name,
+    totalGrams: Number(t.amount) || 0,
+    totalCost: Number(t.price) || 0,
+    pricePerGram: (t.amount && t.price) ? Number(t.price) / Number(t.amount) : 0,
+  }));
   const [revisions, setRevisions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -226,8 +234,8 @@ const RevisionTab = ({ locationId, locations, tobaccoTypes, allShifts, invStanda
 
             {tobaccoTypes.length === 0 ? (
               <div className="text-center p-6 bg-amber-50 rounded-2xl border border-amber-100">
-                <p className="text-amber-600 font-bold text-sm">⚠️ Сначала добавьте сорта табака</p>
-                <p className="text-amber-500 text-xs mt-1">Настройки → Сорта табака</p>
+                <p className="text-amber-600 font-bold text-sm">⚠️ Нет шаблонов табака</p>
+                <p className="text-amber-500 text-xs mt-1">Добавьте шаблоны табака в Склад → Шаблоны</p>
               </div>
             ) : (
               <>

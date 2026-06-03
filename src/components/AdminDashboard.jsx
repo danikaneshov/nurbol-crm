@@ -10,7 +10,6 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import EquipmentTab from './EquipmentTab';
 import RevisionTab from './RevisionTab';
-import TobaccoTypesTab from './TobaccoTypesTab';
 
 const formatMoney = (amount) => {
   if (amount === undefined || amount === null) return 0;
@@ -25,7 +24,6 @@ const AdminDashboard = () => {
   const [employees, setEmployees] = useState([]);
   const [locations, setLocations] = useState([]);
   const [selectedLocationId, setSelectedLocationId] = useState(null); // null = все точки
-  const [tobaccoTypes, setTobaccoTypes] = useState([]);
   const [newLocName, setNewLocName] = useState('');
   const [newLocAddress, setNewLocAddress] = useState('');
   const [isAddingLoc, setIsAddingLoc] = useState(false);
@@ -196,9 +194,6 @@ const AdminDashboard = () => {
       setLocations(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    const unsubTobacco = onSnapshot(query(collection(db, 'tobacco_types'), orderBy('name', 'asc')), (snap) => {
-      setTobaccoTypes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
 
     // Загружаем все продажи, фильтрация по месяцу — на клиенте (через endsWith),
     // т.к. формат DD.MM.YYYY некорректно работает с Firestore where() сравнением строк.
@@ -220,7 +215,7 @@ const AdminDashboard = () => {
     });
 
     return () => {
-      unsubSales(); unsubEmp(); unsubSettings(); unsubLoc(); unsubTobacco();
+      unsubSales(); unsubEmp(); unsubSettings(); unsubLoc();
     };
   }, []);
 
@@ -1631,7 +1626,7 @@ const AdminDashboard = () => {
               <RevisionTab 
                 locationId={selectedLocationId}
                 locations={locations}
-                tobaccoTypes={tobaccoTypes}
+                tobaccoTemplates={invTemplates.filter(t => t.item === 'tobacco')}
                 allShifts={allShifts}
                 invStandards={invStandards}
               />
@@ -1654,7 +1649,6 @@ const AdminDashboard = () => {
             <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm scrollable-tabs">
               <button onClick={() => setSubTab('employees')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'employees' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Персонал</button>
               <button onClick={() => setSubTab('locations')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'locations' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Локации</button>
-              <button onClick={() => setSubTab('tobacco')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'tobacco' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Сорта табака</button>
               <button onClick={() => setSubTab('margins')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'margins' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Маржинальность</button>
               <button onClick={() => setSubTab('debug')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'debug' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Debug</button>
             </div>
@@ -1832,9 +1826,6 @@ const AdminDashboard = () => {
           </div>
             )}
 
-            {subTab === 'tobacco' && (
-              <TobaccoTypesTab tobaccoTypes={tobaccoTypes} />
-            )}
 
             {subTab === 'margins' && (
               <div className="max-w-2xl"><div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm">
