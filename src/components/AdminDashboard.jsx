@@ -8,6 +8,9 @@ import * as XLSX from 'xlsx';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
+import EquipmentTab from './EquipmentTab';
+import RevisionTab from './RevisionTab';
+import TobaccoTypesTab from './TobaccoTypesTab';
 
 const formatMoney = (amount) => {
   if (amount === undefined || amount === null) return 0;
@@ -21,6 +24,8 @@ const AdminDashboard = () => {
   
   const [employees, setEmployees] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [selectedLocationId, setSelectedLocationId] = useState(null); // null = все точки
+  const [tobaccoTypes, setTobaccoTypes] = useState([]);
   const [newLocName, setNewLocName] = useState('');
   const [newLocAddress, setNewLocAddress] = useState('');
   const [isAddingLoc, setIsAddingLoc] = useState(false);
@@ -191,6 +196,10 @@ const AdminDashboard = () => {
       setLocations(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
+    const unsubTobacco = onSnapshot(query(collection(db, 'tobacco_types'), orderBy('name', 'asc')), (snap) => {
+      setTobaccoTypes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
     // Загружаем все продажи, фильтрация по месяцу — на клиенте (через endsWith),
     // т.к. формат DD.MM.YYYY некорректно работает с Firestore where() сравнением строк.
     const salesQuery = query(collection(db, 'sales'), orderBy('dateStr', 'desc'), limit(1000));
@@ -211,7 +220,7 @@ const AdminDashboard = () => {
     });
 
     return () => {
-      unsubSales(); unsubEmp(); unsubSettings(); unsubLoc();
+      unsubSales(); unsubEmp(); unsubSettings(); unsubLoc(); unsubTobacco();
     };
   }, []);
 
@@ -485,8 +494,13 @@ const AdminDashboard = () => {
     };
   }, [allShifts, selectedMonth, ownerProfits, invMovements]);
 
+  // Фильтруем смены по выбранной локации для дашборда
+  const locationFilteredShifts = selectedLocationId
+    ? allShifts.filter(s => s.locationId === selectedLocationId)
+    : allShifts;
+
   // Статистика для дашборда (отдельный месяц от других вкладок)
-  const closedSystemShifts = allShifts.filter(s => s.status === 'closed' && (dashboardMonth === 'all' || (s.dateStr && s.dateStr.endsWith(`.${dashboardMonth}`))));
+  const closedSystemShifts = locationFilteredShifts.filter(s => s.status === 'closed' && (dashboardMonth === 'all' || (s.dateStr && s.dateStr.endsWith(`.${dashboardMonth}`))));
   const totalSystemEarned = closedSystemShifts.reduce((a,b) => a + (b.earned || 0), 0);
   const globalHookahs = closedSystemShifts.reduce((a,b) => a + (b.items?.cocktail1 || 0), 0);
   const globalReplacements = closedSystemShifts.reduce((a,b) => a + (b.items?.cocktail2 || 0), 0);
@@ -677,6 +691,7 @@ const AdminDashboard = () => {
           <button onClick={() => switchTab('shifts', 'calendar')} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${activeTab === 'shifts' ? 'bg-primary text-white shadow-lg shadow-primary-light/50 translate-x-2' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700 hover:translate-x-1'}`}><CalendarIcon size={20}/>Смены</button>
           <button onClick={() => switchTab('finances', 'salaries')} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${activeTab === 'finances' ? 'bg-primary text-white shadow-lg shadow-primary-light/50 translate-x-2' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700 hover:translate-x-1'}`}><Banknote size={20}/>Финансы</button>
           <button onClick={() => switchTab('inventory', 'stock')} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${activeTab === 'inventory' ? 'bg-primary text-white shadow-lg shadow-primary-light/50 translate-x-2' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700 hover:translate-x-1'}`}><Package size={20}/>Склад</button>
+          <button onClick={() => switchTab('equipment')} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${activeTab === 'equipment' ? 'bg-primary text-white shadow-lg shadow-primary-light/50 translate-x-2' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700 hover:translate-x-1'}`}><Database size={20}/>Оборудование</button>
           <button onClick={() => switchTab('settings', 'employees')} className={`w-full flex items-center gap-3 p-4 rounded-2xl font-bold transition-all ${activeTab === 'settings' ? 'bg-primary text-white shadow-lg shadow-primary-light/50 translate-x-2' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700 hover:translate-x-1'}`}><Settings size={20}/>Настройки</button>
         </nav>
         <button onClick={() => signOut(auth)} className="flex items-center gap-3 p-4 text-slate-400 font-bold hover:text-red-500 transition-all"><LogOut size={20}/>Выйти</button>
@@ -692,7 +707,29 @@ const AdminDashboard = () => {
         {activeTab === 'dashboard' && (
           <div className="space-y-10 animate-in fade-in duration-300">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <h1 className="text-2xl font-bold text-slate-800">Общая статистика</h1>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Общая статистика</h1>
+                {/* Переключатель локаций */}
+                {locations.filter(l => l.isActive).length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap mt-3">
+                    <button
+                      onClick={() => setSelectedLocationId(null)}
+                      className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedLocationId === null ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200 hover:text-slate-700'}`}
+                    >
+                      Все точки
+                    </button>
+                    {locations.filter(l => l.isActive).map(loc => (
+                      <button
+                        key={loc.id}
+                        onClick={() => setSelectedLocationId(loc.id)}
+                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedLocationId === loc.id ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200 hover:text-slate-700'}`}
+                      >
+                        {loc.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
                 <CalendarDays className="text-slate-400 ml-3" size={18}/>
                 <select value={dashboardMonth} onChange={e => setDashboardMonth(e.target.value)} className="py-2 pr-4 bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
@@ -701,6 +738,7 @@ const AdminDashboard = () => {
                 </select>
               </div>
             </div>
+
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card variant="elevated" className="p-6 card-hover-effect">
@@ -1360,6 +1398,7 @@ const AdminDashboard = () => {
               <button onClick={() => setSubTab('templates')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'templates' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Шаблоны</button>
               <button onClick={() => setSubTab('writeoff')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'writeoff' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Списание</button>
               <button onClick={() => setSubTab('standards')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'standards' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Стандарты</button>
+              <button onClick={() => setSubTab('revision')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'revision' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Ревизия</button>
             </div>
 
             {subTab === 'stock' && (
@@ -1588,8 +1627,26 @@ const AdminDashboard = () => {
                 </div>
               </div>
             )}
+            {subTab === 'revision' && (
+              <RevisionTab 
+                locationId={selectedLocationId}
+                locations={locations}
+                tobaccoTypes={tobaccoTypes}
+                allShifts={allShifts}
+                invStandards={invStandards}
+              />
+            )}
           </div>);
         })()}
+
+        {/* ВКЛАДКА: ОБОРУДОВАНИЕ */}
+        {activeTab === 'equipment' && (
+          <EquipmentTab
+            locations={locations}
+            selectedLocationId={selectedLocationId}
+            setSelectedLocationId={setSelectedLocationId}
+          />
+        )}
 
         {/* ВКЛАДКА: НАСТРОЙКИ */}
         {activeTab === 'settings' && (
@@ -1597,6 +1654,7 @@ const AdminDashboard = () => {
             <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm scrollable-tabs">
               <button onClick={() => setSubTab('employees')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'employees' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Персонал</button>
               <button onClick={() => setSubTab('locations')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'locations' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Локации</button>
+              <button onClick={() => setSubTab('tobacco')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'tobacco' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Сорта табака</button>
               <button onClick={() => setSubTab('margins')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'margins' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Маржинальность</button>
               <button onClick={() => setSubTab('debug')} className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'debug' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}>Debug</button>
             </div>
@@ -1772,6 +1830,10 @@ const AdminDashboard = () => {
               </div>
             </div>
           </div>
+            )}
+
+            {subTab === 'tobacco' && (
+              <TobaccoTypesTab tobaccoTypes={tobaccoTypes} />
             )}
 
             {subTab === 'margins' && (

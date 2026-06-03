@@ -1,7 +1,7 @@
 {
-  "name": "Fifty ERP",
-  "short_name": "Fifty Admin",
-  "description": "Fifty ERP — Admin Panel",
+  "name": "ERP Admin",
+  "short_name": "ERP Admin",
+  "description": "ERP — Admin Panel",
   "start_url": "/admin",
   "scope": "/admin",
   "display": "standalone",
