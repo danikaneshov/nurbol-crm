@@ -25,6 +25,11 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
   const [filterLocId, setFilterLocId] = useState(selectedLocationId || 'all');
 
   useEffect(() => {
+    setFilterLocId(selectedLocationId || 'all');
+    setForm(f => ({ ...f, locationId: selectedLocationId || '' }));
+  }, [selectedLocationId]);
+
+  useEffect(() => {
     const q = query(collection(db, 'equipment'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
       setEquipment(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -35,19 +40,20 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.locationId) return;
+    const targetLocId = selectedLocationId || form.locationId;
+    if (!form.name || !targetLocId) return;
     setIsAdding(true);
     try {
       await addDoc(collection(db, 'equipment'), {
         name: form.name.trim(),
         category: form.category,
         quantity: Number(form.quantity),
-        locationId: form.locationId,
-        locationName: locations.find(l => l.id === form.locationId)?.name || '',
+        locationId: targetLocId,
+        locationName: locations.find(l => l.id === targetLocId)?.name || '',
         status: 'active',
         createdAt: serverTimestamp()
       });
-      setForm({ name: '', category: 'hookah', quantity: 1, locationId: form.locationId });
+      setForm({ name: '', category: 'hookah', quantity: 1, locationId: targetLocId });
     } catch (err) { alert('Ошибка: ' + err.message); }
     finally { setIsAdding(false); }
   };
@@ -75,24 +81,6 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
           <h1 className="text-2xl font-black text-slate-900">Оборудование</h1>
           <p className="text-sm text-slate-400 mt-1">Кальяны, щипцы, плитки и другой инвентарь</p>
         </div>
-        {/* Фильтр по точке */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setFilterLocId('all')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filterLocId === 'all' ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200 hover:text-slate-700'}`}
-          >
-            Все точки
-          </button>
-          {activeLocs.map(loc => (
-            <button
-              key={loc.id}
-              onClick={() => setFilterLocId(loc.id)}
-              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filterLocId === loc.id ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200 hover:text-slate-700'}`}
-            >
-              {loc.name}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -107,15 +95,21 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">Заведение</label>
-              <select
-                value={form.locationId}
-                onChange={e => setForm({ ...form, locationId: e.target.value })}
-                className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold outline-none"
-                required
-              >
-                <option value="">— Выберите точку —</option>
-                {activeLocs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
+              {selectedLocationId ? (
+                <div className="w-full p-4 bg-slate-100 rounded-2xl font-bold text-slate-800">
+                  {locations.find(l => l.id === selectedLocationId)?.name || 'Неизвестная точка'}
+                </div>
+              ) : (
+                <select
+                  value={form.locationId}
+                  onChange={e => setForm({ ...form, locationId: e.target.value })}
+                  className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold outline-none"
+                  required
+                >
+                  <option value="">— Выберите точку —</option>
+                  {activeLocs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              )}
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">Название</label>

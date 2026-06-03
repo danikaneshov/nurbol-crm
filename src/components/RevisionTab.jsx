@@ -43,6 +43,11 @@ const RevisionTab = ({ locationId, locations, tobaccoTemplates = [], allShifts, 
   // actuals: { [tobaccoTypeId]: actualGrams }
   const [actuals, setActuals] = useState({});
 
+  useEffect(() => {
+    setSelectedLocForRevision(locationId || '');
+    setFilterLocId(locationId || 'all');
+  }, [locationId]);
+
   const activeLocs = locations.filter(l => l.isActive);
 
   // Загружаем ревизии
@@ -161,23 +166,6 @@ const RevisionTab = ({ locationId, locations, tobaccoTemplates = [], allShifts, 
           <h1 className="text-2xl font-black text-slate-900">Ревизия табака</h1>
           <p className="text-sm text-slate-400 mt-1">Проводится 15-го и 30-го (31-го) числа каждого месяца</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setFilterLocId('all')}
-            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filterLocId === 'all' ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200 hover:text-slate-700'}`}
-          >
-            Все точки
-          </button>
-          {activeLocs.map(loc => (
-            <button
-              key={loc.id}
-              onClick={() => setFilterLocId(loc.id)}
-              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filterLocId === loc.id ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200 hover:text-slate-700'}`}
-            >
-              {loc.name}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
@@ -197,14 +185,20 @@ const RevisionTab = ({ locationId, locations, tobaccoTemplates = [], allShifts, 
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">Заведение</label>
-                <select
-                  value={selectedLocForRevision}
-                  onChange={e => setSelectedLocForRevision(e.target.value)}
-                  className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold outline-none"
-                >
-                  <option value="">— Выберите точку —</option>
-                  {activeLocs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
+                {locationId ? (
+                  <div className="w-full p-4 bg-slate-100 rounded-2xl font-bold text-slate-800">
+                    {locations.find(l => l.id === locationId)?.name || 'Неизвестная точка'}
+                  </div>
+                ) : (
+                  <select
+                    value={selectedLocForRevision}
+                    onChange={e => setSelectedLocForRevision(e.target.value)}
+                    className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold outline-none"
+                  >
+                    <option value="">— Выберите точку —</option>
+                    {activeLocs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

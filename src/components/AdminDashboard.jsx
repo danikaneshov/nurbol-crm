@@ -62,6 +62,8 @@ const AdminDashboard = () => {
   const [invCart, setInvCart] = useState([]);
   const [newTemplate, setNewTemplate] = useState({ name: '', item: 'tobacco', amount: '', price: '' });
   const [isSavingInv, setIsSavingInv] = useState(false);
+  const [cartLocationId, setCartLocationId] = useState('');
+  const [writeoffLocationId, setWriteoffLocationId] = useState('');
 
   const availableMonths = useMemo(() => {
     const months = new Set();
@@ -107,10 +109,14 @@ const AdminDashboard = () => {
       return 0;
     };
 
+    const shiftsToGroup = selectedLocationId
+      ? allShifts.filter(s => s.locationId === selectedLocationId)
+      : allShifts;
+
     // На уровне дня оставляем по одной самой релевантной записи на сотрудника:
     // closed приоритетнее open, чтобы "зависшие" open-дубли не ломали отчеты.
     const dedupedShifts = Object.values(
-      allShifts
+      shiftsToGroup
         .filter((shift) => shift.status !== 'cancelled')
         .reduce((acc, shift) => {
           const date = shift.dateStr || 'Неизвестная дата';
@@ -174,7 +180,7 @@ const AdminDashboard = () => {
       const date2 = new Date(`${y2}-${m2}-${d2}`);
       return date2 - date1;
     });
-  }, [allShifts]);
+  }, [allShifts, selectedLocationId]);
 
   // Debug Panel State
   const [debugShift, setDebugShift] = useState({
@@ -427,6 +433,9 @@ const AdminDashboard = () => {
 
   const calculateEmployeeStats = useCallback((empId, month = selectedMonth) => {
     let empShifts = allShifts.filter(s => s.employeeId === empId);
+    if (selectedLocationId) {
+      empShifts = empShifts.filter(s => s.locationId === selectedLocationId);
+    }
     if (month && month !== 'all') {
       empShifts = empShifts.filter(s => s.dateStr && s.dateStr.endsWith(`.${month}`));
     }
@@ -452,12 +461,16 @@ const AdminDashboard = () => {
       hasOpenShift,
       ownerNetProfit: (hookahs * ownerProfits.hookah) + (replacements * ownerProfits.replacement)
     };
-  }, [allShifts, ownerProfits, selectedMonth]);
+  }, [allShifts, ownerProfits, selectedMonth, selectedLocationId]);
 
   // Данные для финансовых отчетов (с учетом выбранного месяца)
   const monthlyStats = useMemo(() => {
     const isAll = selectedMonth === 'all';
-    const filteredShifts = allShifts.filter(s => s.status === 'closed' && (isAll || (s.dateStr && s.dateStr.endsWith(`.${selectedMonth}`))));
+    const filteredShifts = allShifts.filter(s => 
+      s.status === 'closed' && 
+      (isAll || (s.dateStr && s.dateStr.endsWith(`.${selectedMonth}`))) &&
+      (!selectedLocationId || s.locationId === selectedLocationId)
+    );
     
     const earned = filteredShifts.reduce((a, b) => a + (b.earned || 0), 0);
     const hookahs = filteredShifts.reduce((a, b) => a + (b.items?.cocktail1 || 0), 0);
@@ -469,7 +482,11 @@ const AdminDashboard = () => {
       .reduce((a, b) => a + (b.earned || 0), 0);
     
     const purchases = invMovements
-      .filter(m => m.type === 'in' && (isAll || (m.dateStr && m.dateStr.endsWith(`.${selectedMonth}`))))
+      .filter(m => 
+        m.type === 'in' && 
+        (isAll || (m.dateStr && m.dateStr.endsWith(`.${selectedMonth}`))) &&
+        (!selectedLocationId || m.locationId === selectedLocationId)
+      )
       .reduce((a, b) => a + (b.cost || 0), 0);
 
     const hookahProfit = hookahs * ownerProfits.hookah;
@@ -487,7 +504,7 @@ const AdminDashboard = () => {
       netProfit: ownerProfit - earned,
       profitWithoutTamerlan: ownerProfit - (earned - tamerlanEarned)
     };
-  }, [allShifts, selectedMonth, ownerProfits, invMovements]);
+  }, [allShifts, selectedMonth, ownerProfits, invMovements, selectedLocationId]);
 
   // Фильтруем смены по выбранной локации для дашборда
   const locationFilteredShifts = selectedLocationId
@@ -670,13 +687,7 @@ const AdminDashboard = () => {
   return (
     <div className="flex h-screen bg-[#F8FAFC] relative no-select">
       
-      {/* Кнопка Меню для мобилок */}
-      <button 
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-white/90 backdrop-blur-sm rounded-xl shadow-md text-slate-800"
-      >
-        {isMobileMenuOpen ? <X size={24}/> : <Menu size={24}/>}
-      </button>
+
 
       {/* Sidebar (Адаптивный) */}
       <div className={`fixed lg:static inset-y-0 left-0 z-40 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 w-72 bg-white border-r border-slate-200 flex flex-col p-6 shadow-2xl lg:shadow-none`}>
@@ -696,43 +707,70 @@ const AdminDashboard = () => {
       {isMobileMenuOpen && <div onClick={() => setIsMobileMenuOpen(false)} className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden"></div>}
 
       {/* Основной контент */}
-      <div className="flex-1 overflow-auto p-4 pt-20 lg:p-10 lg:pt-10 pb-safe">
-        
-        {/* ВКЛАДКА 1: ДАШБОРД */}
-        {activeTab === 'dashboard' && (
-          <div className="space-y-10 animate-in fade-in duration-300">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800">Общая статистика</h1>
-                {/* Переключатель локаций */}
-                {locations.filter(l => l.isActive).length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap mt-3">
-                    <button
-                      onClick={() => setSelectedLocationId(null)}
-                      className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedLocationId === null ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200 hover:text-slate-700'}`}
-                    >
-                      Все точки
-                    </button>
-                    {locations.filter(l => l.isActive).map(loc => (
-                      <button
-                        key={loc.id}
-                        onClick={() => setSelectedLocationId(loc.id)}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedLocationId === loc.id ? 'bg-primary text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200 hover:text-slate-700'}`}
-                      >
-                        {loc.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
-                <CalendarDays className="text-slate-400 ml-3" size={18}/>
-                <select value={dashboardMonth} onChange={e => setDashboardMonth(e.target.value)} className="py-2 pr-4 bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
-                  <option value="all">Все время</option>
-                  {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Шапка сайта всегда вверху */}
+        <header className="bg-white border-b border-slate-200 py-4 px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 z-20 shrink-0 shadow-sm">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden p-2.5 bg-slate-50 text-slate-800 rounded-xl hover:bg-slate-100 border border-slate-200 transition"
+            >
+              {isMobileMenuOpen ? <X size={20}/> : <Menu size={20}/>}
+            </button>
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block leading-none mb-1">Панель управления</span>
+              <h2 className="text-lg font-black text-slate-900 leading-tight">
+                {activeTab === 'dashboard' && 'Дашборд'}
+                {activeTab === 'shifts' && (subTab === 'calendar' ? 'Смены (Календарь)' : 'Смены (Список)')}
+                {activeTab === 'finances' && (subTab === 'salaries' ? 'Зарплаты' : subTab === 'profit' ? 'Моя прибыль' : 'Закупы')}
+                {activeTab === 'inventory' && (subTab === 'stock' ? 'Склад (Остатки)' : subTab === 'incoming' ? 'Склад (Приход)' : subTab === 'templates' ? 'Склад (Шаблоны)' : subTab === 'writeoff' ? 'Склад (Списание)' : subTab === 'standards' ? 'Склад (Стандарты)' : 'Склад (Ревизия)')}
+                {activeTab === 'equipment' && 'Оборудование'}
+                {activeTab === 'settings' && (subTab === 'employees' ? 'Настройки (Персонал)' : subTab === 'locations' ? 'Настройки (Локации)' : subTab === 'margins' ? 'Настройки (Маржинальность)' : 'Настройки (Debug)')}
+              </h2>
             </div>
+          </div>
+
+          {/* Переключатель локаций в шапке */}
+          {locations.filter(l => l.isActive).length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
+              <span className="text-[11px] font-bold text-slate-400 mr-1 hidden md:inline">Точка:</span>
+              <button
+                onClick={() => setSelectedLocationId(null)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedLocationId === null ? 'bg-primary text-white shadow-md' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:text-slate-700'}`}
+              >
+                Все точки
+              </button>
+              {locations.filter(l => l.isActive).map(loc => (
+                <button
+                  key={loc.id}
+                  onClick={() => setSelectedLocationId(loc.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedLocationId === loc.id ? 'bg-primary text-white shadow-md' : 'bg-slate-50 text-slate-400 border border-slate-200 hover:text-slate-700'}`}
+                >
+                  {loc.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </header>
+
+        {/* Область с прокруткой для контента вкладки */}
+        <div className="flex-1 overflow-auto p-4 lg:p-8 pb-safe bg-[#F8FAFC]">
+          
+          {/* ВКЛАДКА 1: ДАШБОРД */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-10 animate-in fade-in duration-300">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-800">Общая статистика</h1>
+                </div>
+                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                  <CalendarDays className="text-slate-400 ml-3" size={18}/>
+                  <select value={dashboardMonth} onChange={e => setDashboardMonth(e.target.value)} className="py-2 pr-4 bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
+                    <option value="all">Все время</option>
+                    {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+              </div>
 
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1278,19 +1316,25 @@ const AdminDashboard = () => {
         {/* ВКЛАДКА: СКЛАД */}
         {activeTab === 'inventory' && (() => {
           // Склад считается кумулятивно за ВСЁ время (приходы - расходы), независимо от selectedMonth
-          const allClosedShifts = allShifts.filter(s => s.status === 'closed');
+          const allClosedShifts = selectedLocationId
+            ? allShifts.filter(s => s.status === 'closed' && s.locationId === selectedLocationId)
+            : allShifts.filter(s => s.status === 'closed');
           const totalBowls = allClosedShifts.reduce((a, s) => a + (s.items?.cocktail1 || 0) + (s.items?.cocktail2 || 0) + (s.staffHookahs || 0), 0);
           const autoCoalUsed = totalBowls * invStandards.coalPerBowl;
           const autoTobaccoUsed = totalBowls * (invStandards.tobaccoPerBowl || 0);
           const autoMouthpieceUsed = totalBowls * (invStandards.mouthpiecePerBowl || 0);
 
-          const coalIn = invMovements.filter(m => m.item === 'coal' && m.type === 'in').reduce((a, m) => a + (m.amount || 0), 0);
-          const tobaccoIn = invMovements.filter(m => m.item === 'tobacco' && m.type === 'in').reduce((a, m) => a + (m.amount || 0), 0);
-          const mouthpieceIn = invMovements.filter(m => m.item === 'mouthpiece' && m.type === 'in').reduce((a, m) => a + (m.amount || 0), 0);
+          const locMovements = selectedLocationId
+            ? invMovements.filter(m => m.locationId === selectedLocationId)
+            : invMovements;
 
-          const coalWriteoff = invMovements.filter(m => m.item === 'coal' && m.type === 'writeoff').reduce((a, m) => a + (m.amount || 0), 0);
-          const tobaccoWriteoff = invMovements.filter(m => m.item === 'tobacco' && m.type === 'writeoff').reduce((a, m) => a + (m.amount || 0), 0);
-          const mouthpieceWriteoff = invMovements.filter(m => m.item === 'mouthpiece' && m.type === 'writeoff').reduce((a, m) => a + (m.amount || 0), 0);
+          const coalIn = locMovements.filter(m => m.item === 'coal' && m.type === 'in').reduce((a, m) => a + (m.amount || 0), 0);
+          const tobaccoIn = locMovements.filter(m => m.item === 'tobacco' && m.type === 'in').reduce((a, m) => a + (m.amount || 0), 0);
+          const mouthpieceIn = locMovements.filter(m => m.item === 'mouthpiece' && m.type === 'in').reduce((a, m) => a + (m.amount || 0), 0);
+
+          const coalWriteoff = locMovements.filter(m => m.item === 'coal' && m.type === 'writeoff').reduce((a, m) => a + (m.amount || 0), 0);
+          const tobaccoWriteoff = locMovements.filter(m => m.item === 'tobacco' && m.type === 'writeoff').reduce((a, m) => a + (m.amount || 0), 0);
+          const mouthpieceWriteoff = locMovements.filter(m => m.item === 'mouthpiece' && m.type === 'writeoff').reduce((a, m) => a + (m.amount || 0), 0);
 
           const coalStock = coalIn - autoCoalUsed - coalWriteoff;
           const tobaccoStock = tobaccoIn - autoTobaccoUsed - tobaccoWriteoff;
@@ -1340,6 +1384,8 @@ const AdminDashboard = () => {
 
           const handleCartSubmit = async () => {
             if (invCart.length === 0) return;
+            const targetLoc = selectedLocationId || cartLocationId;
+            if (!targetLoc) return alert('Выберите заведение для прихода товара');
             setIsSavingInv(true);
             try {
               const now = new Date();
@@ -1353,10 +1399,12 @@ const AdminDashboard = () => {
                   templateName: item.name,
                   note: '',
                   dateStr,
-                  createdAt: serverTimestamp()
+                  createdAt: serverTimestamp(),
+                  locationId: targetLoc
                 })
               ));
               setInvCart([]);
+              setCartLocationId('');
               alert('Приход сохранён!');
             } catch (err) { alert('Ошибка: ' + err.message); }
             finally { setIsSavingInv(false); }
@@ -1511,14 +1559,37 @@ const AdminDashboard = () => {
                       ))}
                     </div>
 
-                    <div className="bg-slate-50 p-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-slate-100">
-                      <div>
-                        <p className="text-slate-500 font-medium text-sm">Общая сумма закупа:</p>
-                        <h3 className="text-2xl font-black text-slate-900">{formatMoney(invCart.reduce((a,b) => a + (b.pricePerUnit * b.quantity), 0))} ₸</h3>
+                    <div className="bg-slate-50 p-6 flex flex-col sm:flex-row justify-between items-center gap-6 border-t border-slate-100">
+                      <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center w-full sm:w-auto">
+                        <div>
+                          <p className="text-slate-500 font-medium text-sm">Общая сумма закупа:</p>
+                          <h3 className="text-2xl font-black text-slate-900">{formatMoney(invCart.reduce((a,b) => a + (b.pricePerUnit * b.quantity), 0))} ₸</h3>
+                        </div>
+                        {selectedLocationId ? (
+                          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase block">Локация закупа</span>
+                            <span className="font-bold text-slate-800 text-sm">{locations.find(l => l.id === selectedLocationId)?.name}</span>
+                          </div>
+                        ) : (
+                          <div className="w-full sm:w-auto">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 ml-1">Локация закупа</label>
+                            <select
+                              value={cartLocationId}
+                              onChange={e => setCartLocationId(e.target.value)}
+                              className="p-3 bg-white border border-slate-200 rounded-xl font-bold outline-none text-xs text-slate-700 w-full sm:w-auto"
+                              required
+                            >
+                              <option value="">— Выберите точку —</option>
+                              {locations.filter(l => l.isActive).map(l => (
+                                <option key={l.id} value={l.id}>{l.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <button 
                         onClick={handleCartSubmit} 
-                        disabled={isSavingInv}
+                        disabled={isSavingInv || (!selectedLocationId && !cartLocationId)}
                         className="w-full sm:w-auto px-8 py-3.5 bg-primary text-white rounded-2xl font-black text-base shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {isSavingInv ? 'Сохранение...' : <><CheckCircle2 size={20}/> Принять и сохранить</>}
@@ -1586,7 +1657,51 @@ const AdminDashboard = () => {
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold text-slate-800">Списание</h1>
                 <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm max-w-xl">
-                  <form onSubmit={async (e) => { e.preventDefault(); if (!invForm.amount || Number(invForm.amount) <= 0) return alert('Укажите количество'); setIsSavingInv(true); try { const now = new Date(); await addDoc(collection(db, 'inventory_movements'), { type: 'writeoff', item: invForm.item, amount: Number(invForm.amount), cost: 0, note: invForm.note || '', dateStr: `${String(now.getDate()).padStart(2,'0')}.${String(now.getMonth()+1).padStart(2,'0')}.${now.getFullYear()}`, createdAt: serverTimestamp() }); setInvForm({ type: 'in', item: 'coal', amount: '', cost: '', note: '', templateId: '' }); } catch (err) { alert('Ошибка: ' + err.message); } finally { setIsSavingInv(false); } }} className="space-y-5">
+                  <form onSubmit={async (e) => { 
+                    e.preventDefault(); 
+                    if (!invForm.amount || Number(invForm.amount) <= 0) return alert('Укажите количество'); 
+                    const targetLoc = selectedLocationId || writeoffLocationId;
+                    if (!targetLoc) return alert('Выберите заведение для списания');
+                    setIsSavingInv(true); 
+                    try { 
+                      const now = new Date(); 
+                      await addDoc(collection(db, 'inventory_movements'), { 
+                        type: 'writeoff', 
+                        item: invForm.item, 
+                        amount: Number(invForm.amount), 
+                        cost: 0, 
+                        note: invForm.note || '', 
+                        dateStr: `${String(now.getDate()).padStart(2,'0')}.${String(now.getMonth()+1).padStart(2,'0')}.${now.getFullYear()}`, 
+                        createdAt: serverTimestamp(),
+                        locationId: targetLoc
+                      }); 
+                      setInvForm({ type: 'in', item: 'coal', amount: '', cost: '', note: '', templateId: '' }); 
+                      setWriteoffLocationId('');
+                      alert('Списание успешно произведено!');
+                    } catch (err) { alert('Ошибка: ' + err.message); } 
+                    finally { setIsSavingInv(false); } 
+                  }} className="space-y-5">
+                    {selectedLocationId ? (
+                      <div className="bg-slate-50 p-4 rounded-2xl">
+                        <span className="text-xs text-slate-400 font-bold uppercase block mb-1">Заведение</span>
+                        <span className="font-bold text-slate-800">{locations.find(l => l.id === selectedLocationId)?.name}</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Заведение</label>
+                        <select 
+                          value={writeoffLocationId} 
+                          onChange={e => setWriteoffLocationId(e.target.value)} 
+                          className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold outline-none text-slate-800"
+                          required
+                        >
+                          <option value="">— Выберите точку —</option>
+                          {locations.filter(l => l.isActive).map(l => (
+                            <option key={l.id} value={l.id}>{l.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div><label className="block text-xs font-bold text-slate-400 uppercase mb-2">Товар</label><select value={invForm.item} onChange={e => setInvForm({...invForm, item: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-lg text-slate-800"><option value="coal">🔥 Уголь (шт)</option><option value="tobacco">🍃 Табак (г)</option><option value="mouthpiece">💠 Мундштуки (шт)</option></select></div>
                     <div><label className="block text-xs font-bold text-slate-400 uppercase mb-2">Количество</label><input type="number" min="1" value={invForm.amount} onChange={e => setInvForm({...invForm, amount: e.target.value})} placeholder="Сколько списать" className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-lg text-slate-800" required /></div>
                     <div><label className="block text-xs font-bold text-slate-400 uppercase mb-2">Причина</label><input type="text" value={invForm.note} onChange={e => setInvForm({...invForm, note: e.target.value})} placeholder="Например: отправил на вторую точку" className="w-full p-4 bg-slate-50 rounded-2xl border-none font-bold text-slate-800" /></div>
@@ -1596,8 +1711,8 @@ const AdminDashboard = () => {
                 <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
                   <div className="p-6 border-b border-slate-100"><h2 className="text-lg font-black text-slate-800">История списаний</h2></div>
                   <div className="divide-y divide-slate-50">
-                    {invMovements.filter(m => m.type === 'writeoff').length === 0 && <div className="p-6 text-center text-slate-400">Нет записей</div>}
-                    {invMovements.filter(m => m.type === 'writeoff').map(m => (
+                    {invMovements.filter(m => m.type === 'writeoff' && (!selectedLocationId || m.locationId === selectedLocationId)).length === 0 && <div className="p-6 text-center text-slate-400">Нет записей</div>}
+                    {invMovements.filter(m => m.type === 'writeoff' && (!selectedLocationId || m.locationId === selectedLocationId)).map(m => (
                       <div key={m.id} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
                         <div><p className="font-bold text-slate-800">{m.item === 'coal' ? '🔥 Уголь' : m.item === 'tobacco' ? '🍃 Табак' : '💠 Мундштуки'} <span className="text-orange-500">-{formatMoney(m.amount)} {m.item === 'coal' || m.item === 'mouthpiece' ? 'шт' : 'г'}</span></p>{m.note && <p className="text-xs text-slate-400 mt-0.5">{m.note}</p>}</div>
                         <div className="flex items-center gap-3"><span className="text-xs text-slate-400">{m.dateStr}</span><button onClick={() => deleteDoc(doc(db, 'inventory_movements', m.id))} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button></div>
@@ -1866,6 +1981,7 @@ const AdminDashboard = () => {
             )}
           </div>
         )}
+      </div>
       </div>
       {/* Глобальное модальное окно деталей смены */}
       {selectedEmpReport && selectedEmpReport.records && (
