@@ -355,11 +355,22 @@ const AdminDashboard = () => {
     }
   };
 
-  const generatePin = () => setNewEmpPin(Math.floor(1000 + Math.random() * 9000).toString());
+  const generatePin = () => {
+    let newPin;
+    do {
+      newPin = Math.floor(1000 + Math.random() * 9000).toString();
+    } while (employees.some(emp => emp.pin === newPin));
+    setNewEmpPin(newPin);
+  };
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
     if (!newEmpName || newEmpPin.length !== 4) return;
+    
+    if (employees.some(emp => emp.pin === newEmpPin)) {
+      return alert('Сотрудник с таким PIN уже существует! Введите другой или сгенерируйте новый.');
+    }
+    
     setIsAdding(true);
     try {
       await addDoc(collection(db, 'employees'), {
