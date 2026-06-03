@@ -91,7 +91,12 @@ const RevisionTab = ({ locationId, locations, tobaccoTemplates = [], allShifts, 
     // Распределяем теоретический остаток по сортам (пропорционально приходу каждого сорта)
     const tobaccoInByType = {};
     tobaccoTypes.forEach(tt => {
-      const typeMovements = locMovements.filter(m => m.tobaccoTypeId === tt.id || m.tobaccoTypeName === tt.name);
+      const typeMovements = locMovements.filter(m => 
+        m.tobaccoTypeId === tt.id || 
+        m.tobaccoTypeName === tt.name || 
+        m.templateId === tt.id || 
+        m.templateName === tt.name
+      );
       tobaccoInByType[tt.id] = typeMovements.reduce((a, m) => a + (m.amount || 0), 0);
     });
 

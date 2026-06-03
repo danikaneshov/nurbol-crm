@@ -1397,6 +1397,7 @@ const AdminDashboard = () => {
                   amount: item.amountPerUnit * item.quantity,
                   cost: item.pricePerUnit * item.quantity,
                   templateName: item.name,
+                  templateId: item.templateId,
                   note: '',
                   dateStr,
                   createdAt: serverTimestamp(),
