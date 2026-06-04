@@ -268,6 +268,12 @@ const AdminDashboard = () => {
     } catch (err) { alert('Ошибка сохранения: ' + err.message); }
     finally { setIsSavingSettings(false); }
   };
+  const handleSaveStandards = async () => {
+    setIsSavingInv(true);
+    try { await setDoc(doc(db, 'settings', 'inventory_standards'), invStandards); alert('Стандарты сохранены!'); }
+    catch (err) { alert('Ошибка: ' + err.message); }
+    finally { setIsSavingInv(false); }
+  };
 
   const handleCreateDebugShift = async (e) => {
     e.preventDefault();
@@ -1464,12 +1470,7 @@ const AdminDashboard = () => {
               finally { setIsSavingInv(false); }
             };
 
-            const handleSaveStandards = async () => {
-              setIsSavingInv(true);
-              try { await setDoc(doc(db, 'settings', 'inventory_standards'), invStandards); alert('Стандарты сохранены!'); }
-              catch (err) { alert('Ошибка: ' + err.message); }
-              finally { setIsSavingInv(false); }
-            };
+
 
             const handleTemplateSubmit = async (e) => {
               e.preventDefault();
