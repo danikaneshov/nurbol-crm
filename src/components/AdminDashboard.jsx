@@ -10,7 +10,6 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import EquipmentTab from './EquipmentTab';
 import RevisionTab from './RevisionTab';
-import TobaccoTypesTab from './TobaccoTypesTab';
 
 const formatMoney = (amount) => {
   if (amount === undefined || amount === null) return 0;
@@ -28,6 +27,7 @@ const AdminDashboard = () => {
   const [selectedLocationId, setSelectedLocationId] = useState(null); // null = все точки
   const [newLocName, setNewLocName] = useState('');
   const [newLocAddress, setNewLocAddress] = useState('');
+  const [newLocMargin, setNewLocMargin] = useState(50);
   const [isAddingLoc, setIsAddingLoc] = useState(false);
   const [editingLocId, setEditingLocId] = useState(null);
   const [editLocForm, setEditLocForm] = useState({ name: '', address: '' });
@@ -67,8 +67,6 @@ const AdminDashboard = () => {
   const [cartLocationId, setCartLocationId] = useState('');
   const [writeoffLocationId, setWriteoffLocationId] = useState('');
 
-  // Tobacco types
-  const [tobaccoTypes, setTobaccoTypes] = useState([]);
 
   const availableMonths = useMemo(() => {
     const months = new Set();
@@ -218,13 +216,9 @@ const AdminDashboard = () => {
       if (docSnap.exists()) setOwnerProfits(docSnap.data());
     });
 
-    // Tobacco types
-    const unsubTobacco = onSnapshot(query(collection(db, 'tobacco_types'), orderBy('name', 'asc')), (snap) => {
-      setTobaccoTypes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
 
     return () => {
-      unsubSales(); unsubEmp(); unsubSettings(); unsubLoc(); unsubTobacco();
+      unsubSales(); unsubEmp(); unsubSettings(); unsubLoc();
     };
   }, []);
 
@@ -416,10 +410,11 @@ const AdminDashboard = () => {
       await addDoc(collection(db, 'locations'), {
         name: newLocName,
         address: newLocAddress,
+        margin: newLocMargin,
         isActive: true,
         createdAt: serverTimestamp()
       });
-      setNewLocName(''); setNewLocAddress('');
+      setNewLocName(''); setNewLocAddress(''); setNewLocMargin(50);
     } catch (error) { alert('Ошибка: ' + error.message); } finally { setIsAddingLoc(false); }
   };
 
@@ -694,7 +689,7 @@ const AdminDashboard = () => {
     dashboard: 'Дашборд',
     shifts: subTab === 'calendar' ? 'Календарь смен' : 'Список смен',
     finances: subTab === 'salaries' ? 'Зарплаты' : subTab === 'profit' ? 'Прибыль' : 'Закупы',
-    inventory: subTab === 'stock' ? 'Остатки' : subTab === 'incoming' ? 'Приход' : subTab === 'templates' ? 'Шаблоны' : subTab === 'writeoff' ? 'Списание' : subTab === 'standards' ? 'Стандарты' : subTab === 'tobacco' ? 'Сорта табака' : 'Склад',
+    inventory: subTab === 'stock' ? 'Остатки' : subTab === 'incoming' ? 'Приход' : subTab === 'templates' ? 'Шаблоны' : subTab === 'writeoff' ? 'Списание' : 'Склад',
     revision: 'Ревизия',
     equipment: 'Оборудование',
     settings: subTab === 'employees' ? 'Персонал' : subTab === 'locations' ? 'Локации' : subTab === 'margins' ? 'Маржинальность' : 'Debug',
@@ -1364,7 +1359,8 @@ const AdminDashboard = () => {
             const mouthpieceWriteoff = locMovements.filter(m => m.item === 'mouthpiece' && m.type === 'writeoff').reduce((a, m) => a + (m.amount || 0), 0);
 
             const coalStock = coalIn - autoCoalUsed - coalWriteoff;
-            const tobaccoStock = tobaccoIn - autoTobaccoUsed - tobaccoWriteoff;
+            const tobaccoCorrection = locMovements.filter(m => m.item === 'tobacco' && m.type === 'correction').reduce((a, m) => a + (m.amount || 0), 0);
+            const tobaccoStock = tobaccoIn + tobaccoCorrection - autoTobaccoUsed - tobaccoWriteoff;
             const mouthpieceStock = mouthpieceIn - autoMouthpieceUsed - mouthpieceWriteoff;
 
             const handleInvSubmit = async (e) => {
@@ -1468,9 +1464,7 @@ const AdminDashboard = () => {
                 <button onClick={() => setSubTab('incoming')} className={`pill-tab ${subTab === 'incoming' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Приход</button>
                 <button onClick={() => setSubTab('templates')} className={`pill-tab ${subTab === 'templates' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Шаблоны</button>
                 <button onClick={() => setSubTab('writeoff')} className={`pill-tab ${subTab === 'writeoff' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Списание</button>
-                <button onClick={() => setSubTab('standards')} className={`pill-tab ${subTab === 'standards' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Стандарты</button>
-                <button onClick={() => setSubTab('tobacco')} className={`pill-tab ${subTab === 'tobacco' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Сорта табака</button>
-              </div>
+                                              </div>
 
               {subTab === 'stock' && (
                 <div className="space-y-4">
@@ -1729,36 +1723,18 @@ const AdminDashboard = () => {
                 </div>
               )}
 
-              {subTab === 'standards' && (
-                <div className="max-w-xl space-y-4">
-                  <h1 className="text-xl font-bold text-slate-900">Стандарты расхода</h1>
-                  <div className="stat-card p-6">
-                    <p className="text-slate-500 mb-4 text-xs">Укажи сколько ресурсов уходит на 1 чашу.</p>
-                    <div className="space-y-4">
-                      <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">🔥 Углей на 1 чашу (шт)</label><input type="number" min="1" value={invStandards.coalPerBowl} onChange={e => setInvStandards({...invStandards, coalPerBowl: Number(e.target.value)})} className="input-flat" /></div>
-                      <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">🍃 Табака на 1 чашу (г)</label><input type="number" min="1" value={invStandards.tobaccoPerBowl} onChange={e => setInvStandards({...invStandards, tobaccoPerBowl: Number(e.target.value)})} className="input-flat" /></div>
-                      <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">💠 Мундштуков на 1 чашу (шт)</label><input type="number" min="0" value={invStandards.mouthpiecePerBowl} onChange={e => setInvStandards({...invStandards, mouthpiecePerBowl: Number(e.target.value)})} className="input-flat" /></div>
-                      <button onClick={handleSaveStandards} disabled={isSavingInv} className="w-full p-3 bg-primary text-white rounded-xl font-bold shadow-sm disabled:opacity-40 text-sm">{isSavingInv ? 'Сохранение...' : 'Сохранить стандарты'}</button>
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {subTab === 'tobacco' && (
-                <TobaccoTypesTab tobaccoTypes={tobaccoTypes} />
-              )}
+
             </div>);
           })()}
 
           {/* ============ REVISION (SEPARATE TAB) ============ */}
           {activeTab === 'revision' && (
             <RevisionTab 
-              locationId={selectedLocationId}
-              locations={locations}
-              tobaccoTemplates={invTemplates.filter(t => t.item === 'tobacco')}
-              tobaccoTypes={tobaccoTypes}
+              locations={locations} 
               allShifts={allShifts}
-              invStandards={invStandards}
+              locationId={selectedLocationId}
+              allTobaccoSorts={invTemplates.filter(t => t.item === 'tobacco').map(t => ({ id: t.id, name: t.name, pricePerGram: (t.price && t.amount) ? (Number(t.price)/Number(t.amount)) : 0 }))}
             />
           )}
 
@@ -1777,6 +1753,7 @@ const AdminDashboard = () => {
               <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 w-fit scrollable-tabs">
                 <button onClick={() => setSubTab('employees')} className={`pill-tab ${subTab === 'employees' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Персонал</button>
                 <button onClick={() => setSubTab('locations')} className={`pill-tab ${subTab === 'locations' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Локации</button>
+                <button onClick={() => setSubTab('standards')} className={`pill-tab ${subTab === 'standards' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Стандарты</button>
                 <button onClick={() => setSubTab('margins')} className={`pill-tab ${subTab === 'margins' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Маржинальность</button>
                 <button onClick={() => setSubTab('debug')} className={`pill-tab ${subTab === 'debug' ? 'pill-tab-active' : 'pill-tab-inactive'}`}>Debug</button>
               </div>
@@ -1863,6 +1840,7 @@ const AdminDashboard = () => {
                 <form onSubmit={handleAddLocation} className="space-y-3">
                   <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Название</label><input type="text" value={newLocName} onChange={e=>setNewLocName(e.target.value)} placeholder="Напр. Основная" className="input-flat" required /></div>
                   <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Адрес</label><input type="text" value={newLocAddress} onChange={e=>setNewLocAddress(e.target.value)} placeholder="Напр. ул. Абая, 12" className="input-flat" /></div>
+                  <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Маржа (%)</label><input type="number" min="0" max="100" value={newLocMargin} onChange={e=>setNewLocMargin(Number(e.target.value))} placeholder="%" className="input-flat" required /></div>
                   <button type="submit" disabled={isAddingLoc || !newLocName} className="w-full p-3 mt-1 bg-primary text-white rounded-xl font-bold disabled:opacity-30 text-sm">Добавить</button>
                 </form>
               </div>
@@ -1874,14 +1852,14 @@ const AdminDashboard = () => {
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="font-bold text-sm text-slate-900">{loc.name}</h3>
-                          <p className="text-xs font-medium text-slate-500 mt-0.5">{loc.address || 'Адрес не указан'}</p>
+                          <p className="text-xs font-medium text-slate-500 mt-0.5">{loc.address || 'Адрес не указан'} • {loc.margin || 50}% маржа</p>
                           <div className="mt-1">
                             {!loc.isActive ? <Badge variant="default">В архиве</Badge> : <Badge variant="success">Активна</Badge>}
                           </div>
                         </div>
                         <div className="flex gap-1.5">
                           {editingLocId !== loc.id && loc.isActive && (
-                            <button onClick={() => { setEditingLocId(loc.id); setEditLocForm({ name: loc.name || '', address: loc.address || '' }); }} className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"><Edit3 size={14}/></button>
+                            <button onClick={() => { setEditingLocId(loc.id); setEditLocForm({ name: loc.name || '', address: loc.address || '', margin: loc.margin || 50 }); }} className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"><Edit3 size={14}/></button>
                           )}
                           {!loc.isActive ? (
                             <button onClick={() => updateDoc(doc(db, 'locations', loc.id), { isActive: true })} className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors"><RotateCcw size={14}/></button>
@@ -1895,6 +1873,7 @@ const AdminDashboard = () => {
                         <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200 mt-2 animate-scale-in">
                           <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Название</label><input type="text" value={editLocForm.name} onChange={e=>setEditLocForm({...editLocForm, name: e.target.value})} className="input-flat text-sm p-2.5" /></div>
                           <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Адрес</label><input type="text" value={editLocForm.address} onChange={e=>setEditLocForm({...editLocForm, address: e.target.value})} className="input-flat text-sm p-2.5" /></div>
+                          <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Маржа (%)</label><input type="number" min="0" max="100" value={editLocForm.margin} onChange={e=>setEditLocForm({...editLocForm, margin: Number(e.target.value)})} className="input-flat text-sm p-2.5" /></div>
                           <div className="flex gap-2 pt-1">
                             <button onClick={() => setEditingLocId(null)} className="flex-1 py-2 bg-white/30 text-slate-400 rounded-lg text-xs font-bold hover:bg-white/50 transition-colors">Отмена</button>
                             <button onClick={() => handleSaveLocEdit(loc.id)} className="flex-1 py-2 bg-primary text-white rounded-lg text-xs font-bold shadow-md shadow-primary/20 hover:bg-primary-dark transition-colors">Сохранить</button>
@@ -1906,6 +1885,21 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </div>
+              )}
+
+                            {subTab === 'standards' && (
+                <div className="max-w-xl space-y-4">
+                  <h1 className="text-xl font-bold text-slate-900">Стандарты расхода</h1>
+                  <div className="stat-card p-6">
+                    <p className="text-slate-500 mb-4 text-xs">Укажи сколько ресурсов уходит на 1 чашу.</p>
+                    <div className="space-y-4">
+                      <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">🔥 Углей на 1 чашу (шт)</label><input type="number" min="1" value={invStandards.coalPerBowl} onChange={e => setInvStandards({...invStandards, coalPerBowl: Number(e.target.value)})} className="input-flat" /></div>
+                      <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">🍃 Табака на 1 чашу (г)</label><input type="number" min="1" value={invStandards.tobaccoPerBowl} onChange={e => setInvStandards({...invStandards, tobaccoPerBowl: Number(e.target.value)})} className="input-flat" /></div>
+                      <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">💠 Мундштуков на 1 чашу (шт)</label><input type="number" min="0" value={invStandards.mouthpiecePerBowl} onChange={e => setInvStandards({...invStandards, mouthpiecePerBowl: Number(e.target.value)})} className="input-flat" /></div>
+                      <button onClick={handleSaveStandards} disabled={isSavingInv} className="w-full p-3 bg-primary text-white rounded-xl font-bold shadow-sm disabled:opacity-40 text-sm">{isSavingInv ? 'Сохранение...' : 'Сохранить стандарты'}</button>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {subTab === 'margins' && (

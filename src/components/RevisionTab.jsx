@@ -8,26 +8,7 @@ const formatMoney = (amount) => {
   return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 };
 
-const RevisionTab = ({ locationId, locations, tobaccoTemplates = [], tobaccoTypes = [], allShifts, invStandards }) => {
-  // Нормализуем: используем tobaccoTypes если есть, иначе фолбэк на tobaccoTemplates
-  const allTobaccoSorts = useMemo(() => {
-    if (tobaccoTypes && tobaccoTypes.length > 0) {
-      return tobaccoTypes.map(t => ({
-        id: t.id,
-        name: t.name,
-        totalGrams: Number(t.totalGrams) || 0,
-        totalCost: Number(t.totalCost) || 0,
-        pricePerGram: t.pricePerGram || ((t.totalGrams && t.totalCost) ? Number(t.totalCost) / Number(t.totalGrams) : 0),
-      }));
-    }
-    return tobaccoTemplates.map(t => ({
-      id: t.id,
-      name: t.name,
-      totalGrams: Number(t.amount) || 0,
-      totalCost: Number(t.price) || 0,
-      pricePerGram: (t.amount && t.price) ? Number(t.price) / Number(t.amount) : 0,
-    }));
-  }, [tobaccoTypes, tobaccoTemplates]);
+const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, invStandards }) => {
 
   const [revisions, setRevisions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,32 +60,32 @@ const RevisionTab = ({ locationId, locations, tobaccoTemplates = [], tobaccoType
 
     const locMovements = invMovements.filter(m => 
       (!m.locationId || m.locationId === selectedLocForRevision) && 
-      m.item === 'tobacco' && 
-      m.type === 'in'
+      m.item === 'tobacco'
     );
-    const totalTobaccoIn = locMovements.reduce((a, m) => a + (m.amount || 0), 0);
+    
+    const totalTobaccoIn = locMovements.filter(m => m.type === 'in').reduce((a, m) => a + (m.amount || 0), 0);
 
     // Распределяем по сортам
     const tobaccoInByType = {};
+    const tobaccoCorrectionByType = {};
+    
     allTobaccoSorts.forEach(tt => {
-      const typeMovements = locMovements.filter(m => 
-        m.tobaccoTypeId === tt.id || 
-        m.tobaccoTypeName === tt.name || 
-        m.templateId === tt.id || 
-        m.templateName === tt.name
-      );
-      tobaccoInByType[tt.id] = typeMovements.reduce((a, m) => a + (m.amount || 0), 0);
+      const typeMovements = locMovements.filter(m => m.templateId === tt.id);
+      tobaccoInByType[tt.id] = typeMovements.filter(m => m.type === 'in').reduce((a, m) => a + (m.amount || 0), 0);
+      tobaccoCorrectionByType[tt.id] = typeMovements.filter(m => m.type === 'correction').reduce((a, m) => a + (m.amount || 0), 0);
     });
 
-    // Расход пропорционален доле каждого сорта
+    // Расход пропорционален доле каждого сорта от общего прихода
     const result = {};
     allTobaccoSorts.forEach(tt => {
       const share = totalTobaccoIn > 0 ? (tobaccoInByType[tt.id] || 0) / totalTobaccoIn : 0;
       const usedForType = totalTobaccoUsed * share;
+      const expected = (tobaccoInByType[tt.id] || 0) + (tobaccoCorrectionByType[tt.id] || 0) - usedForType;
       result[tt.id] = {
         incoming: tobaccoInByType[tt.id] || 0,
+        correction: tobaccoCorrectionByType[tt.id] || 0,
         used: Math.round(usedForType),
-        expected: Math.max(0, (tobaccoInByType[tt.id] || 0) - usedForType),
+        expected: Math.max(0, Math.round(expected)),
       };
     });
 
@@ -161,6 +142,27 @@ const RevisionTab = ({ locationId, locations, tobaccoTemplates = [], tobaccoType
         totalShortageGrams,
         createdAt: serverTimestamp()
       });
+      
+      // Авто-корректировка склада на основе разницы
+      for (const tt of allTobaccoSorts) {
+        const data = expectedByTobaccoType[tt.id] || { expected: 0 };
+        const actualGrams = Number(actuals[tt.id] || 0);
+        const diff = actualGrams - data.expected;
+        
+        if (diff !== 0) {
+          await addDoc(collection(db, 'inventory_movements'), {
+            type: 'correction',
+            item: 'tobacco',
+            amount: diff,
+            templateId: tt.id,
+            templateName: tt.name,
+            locationId: selectedLocForRevision,
+            note: `Корректировка ревизии ${revisionDate}`,
+            dateStr: revisionDate,
+            createdAt: serverTimestamp()
+          });
+        }
+      }
       setActuals({});
       alert('Ревизия сохранена!');
     } catch (err) { alert('Ошибка: ' + err.message); }

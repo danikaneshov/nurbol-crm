@@ -3,12 +3,6 @@ import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, serverT
 import { db } from '../firebase';
 import { Plus, Trash2, RotateCcw, MapPin, Edit3 } from 'lucide-react';
 
-const CATEGORIES = [
-  { id: 'hookah', label: 'Кальян', icon: '💨', color: 'blue' },
-  { id: 'accessory', label: 'Аксессуары', icon: '🔧', color: 'orange' },
-  { id: 'heating', label: 'Плитка/Нагрев', icon: '🔥', color: 'red' },
-  { id: 'other', label: 'Прочее', icon: '📦', color: 'slate' },
-];
 
 const STATUS_LABELS = {
   active: { label: 'Активно', cls: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' },
@@ -45,7 +39,7 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
     try {
       await addDoc(collection(db, 'equipment'), {
         name: form.name.trim(),
-        category: form.category,
+        
         quantity: Number(form.quantity),
         locationId: targetLocId,
         locationName: locations.find(l => l.id === targetLocId)?.name || '',
@@ -68,10 +62,6 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
     ? equipment
     : equipment.filter(e => e.locationId === filterLocId);
 
-  const grouped = CATEGORIES.map(cat => ({
-    ...cat,
-    items: filteredEquipment.filter(e => e.category === cat.id)
-  })).filter(g => g.items.length > 0);
 
   // Counts
   const totalActive = filteredEquipment.filter(e => e.status === 'active').length;
@@ -123,18 +113,10 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Серийный номер / Заметка</label>
               <input type="text" value={form.serialNumber} onChange={e => setForm({ ...form, serialNumber: e.target.value })} placeholder="Напр. SN-123, Чёрный" className="input-flat" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Категория</label>
-                <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="input-flat">
-                  {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
-                </select>
-              </div>
-              <div>
+            <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Кол-во</label>
                 <input type="number" min="1" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} className="input-flat" />
               </div>
-            </div>
             <button type="submit" disabled={isAdding || !form.name} className="w-full p-3 mt-1 bg-primary text-white rounded-xl font-bold shadow-sm disabled:opacity-40 transition flex items-center justify-center gap-2 text-sm">
               <Plus size={16} />
               {isAdding ? 'Добавление...' : 'Добавить'}
@@ -158,13 +140,8 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
             </div>
           )}
 
-          {grouped.map(group => (
-            <div key={group.id}>
-              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <span>{group.icon}</span> {group.label}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {group.items.map(item => {
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {filteredEquipment.map(item => {
                   const st = STATUS_LABELS[item.status] || STATUS_LABELS.active;
                   return (
                     <div key={item.id} className={`stat-card p-4 transition-all ${item.status !== 'active' ? 'opacity-50' : 'hover:border-primary/20'}`}>
@@ -197,10 +174,8 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
                       </div>
                     </div>
                   );
-                })}
-              </div>
-            </div>
-          ))}
+            })}
+          </div>
         </div>
       </div>
     </div>
