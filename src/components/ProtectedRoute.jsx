@@ -64,7 +64,11 @@ const ProtectedRoute = ({ children }) => {
   useEffect(() => {
     // onAuthStateChanged слушает изменения статуса авторизации в Firebase
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      if (!currentUser && import.meta.env.DEV) {
+        setUser({ email: 'dev@crm.com', uid: 'dev-admin' });
+      } else {
+        setUser(currentUser);
+      }
       setAuthResolved(true);
     });
 

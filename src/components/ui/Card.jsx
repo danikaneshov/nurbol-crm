@@ -1,27 +1,15 @@
-import React from 'react';
-
-const Card = React.forwardRef(({ className = '', variant = 'default', children, ...props }, ref) => {
-  const baseStyles = 'rounded-[32px] overflow-hidden';
-  
+export const Card = ({ children, className = '', variant = 'default', ...props }) => {
   const variants = {
-    default: 'bg-white border border-slate-100 shadow-sm',
-    elevated: 'bg-white border border-slate-100 shadow-lg hover:shadow-xl transition-shadow duration-300',
-    gradient: 'bg-gradient-to-br from-primary to-primary-dark text-white shadow-lg',
-    outline: 'bg-transparent border-2 border-slate-200',
-    ghost: 'bg-transparent',
+    default: 'bg-white border border-slate-200 rounded-lg',
+    elevated: 'bg-white border border-slate-200 rounded-lg shadow-sm',
+    gradient: 'bg-slate-900 rounded-lg text-white', // No gradient, just solid dark
+    glass: 'bg-white border border-slate-200 rounded-lg', // Ignore glass
+    accent: 'bg-white border border-blue-200 rounded-lg',
   };
 
   return (
-    <div
-      ref={ref}
-      className={`${baseStyles} ${variants[variant]} ${className}`}
-      {...props}
-    >
+    <div className={`${variants[variant] || variants.default} ${className}`} {...props}>
       {children}
     </div>
   );
-});
-
-Card.displayName = 'Card';
-
-export { Card };
+};
