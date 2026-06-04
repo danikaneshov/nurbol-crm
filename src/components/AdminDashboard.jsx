@@ -468,7 +468,7 @@ const AdminDashboard = () => {
       totalItems: hookahs + replacements,
       shiftsCount,
       hasOpenShift,
-      ownerNetProfit: locationShifts.reduce((acc, s) => {
+      ownerNetProfit: closedShifts.reduce((acc, s) => {
         const loc = locations.find(l => l.id === s.locationId) || {};
         const ph = loc.profitHookah !== undefined ? Number(loc.profitHookah) : ownerProfits.hookah;
         const pr = loc.profitReplacement !== undefined ? Number(loc.profitReplacement) : ownerProfits.replacement;
@@ -488,7 +488,7 @@ const AdminDashboard = () => {
     const earned = filteredShifts.reduce((a, b) => a + (b.earned || 0), 0);
     const hookahs = filteredShifts.reduce((a, b) => a + (b.items?.cocktail1 || 0), 0);
     const replacements = filteredShifts.reduce((a, b) => a + (b.items?.cocktail2 || 0), 0);
-    const ownerProfit = empShifts.reduce((acc, s) => {
+    const ownerProfit = filteredShifts.reduce((acc, s) => {
       const loc = locations.find(l => l.id === s.locationId) || {};
       const ph = loc.profitHookah !== undefined ? Number(loc.profitHookah) : ownerProfits.hookah;
       const pr = loc.profitReplacement !== undefined ? Number(loc.profitReplacement) : ownerProfits.replacement;
@@ -507,12 +507,12 @@ const AdminDashboard = () => {
       )
       .reduce((a, b) => a + (b.cost || 0), 0);
 
-    const hookahProfit = dayShifts.reduce((acc, s) => {
+    const hookahProfit = filteredShifts.reduce((acc, s) => {
       const loc = locations.find(l => l.id === s.locationId) || {};
       const ph = loc.profitHookah !== undefined ? Number(loc.profitHookah) : ownerProfits.hookah;
       return acc + ((s.items?.cocktail1 || 0) * ph);
     }, 0);
-    const replacementProfit = dayShifts.reduce((acc, s) => {
+    const replacementProfit = filteredShifts.reduce((acc, s) => {
       const loc = locations.find(l => l.id === s.locationId) || {};
       const pr = loc.profitReplacement !== undefined ? Number(loc.profitReplacement) : ownerProfits.replacement;
       return acc + ((s.items?.cocktail2 || 0) * pr);
@@ -540,7 +540,7 @@ const AdminDashboard = () => {
   const totalSystemEarned = closedSystemShifts.reduce((a,b) => a + (b.earned || 0), 0);
   const globalHookahs = closedSystemShifts.reduce((a,b) => a + (b.items?.cocktail1 || 0), 0);
   const globalReplacements = closedSystemShifts.reduce((a,b) => a + (b.items?.cocktail2 || 0), 0);
-  const globalOwnerProfit = allClosedShifts.reduce((acc, s) => {
+  const globalOwnerProfit = closedSystemShifts.reduce((acc, s) => {
     const loc = locations.find(l => l.id === s.locationId) || {};
     const ph = loc.profitHookah !== undefined ? Number(loc.profitHookah) : ownerProfits.hookah;
     const pr = loc.profitReplacement !== undefined ? Number(loc.profitReplacement) : ownerProfits.replacement;
