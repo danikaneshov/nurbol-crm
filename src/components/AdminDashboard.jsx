@@ -27,7 +27,8 @@ const AdminDashboard = () => {
   const [selectedLocationId, setSelectedLocationId] = useState(null); // null = все точки
   const [newLocName, setNewLocName] = useState('');
   const [newLocAddress, setNewLocAddress] = useState('');
-  const [newLocMargin, setNewLocMargin] = useState(50);
+  const [newLocProfitHookah, setNewLocProfitHookah] = useState('');
+  const [newLocProfitReplacement, setNewLocProfitReplacement] = useState('');
   const [isAddingLoc, setIsAddingLoc] = useState(false);
   const [editingLocId, setEditingLocId] = useState(null);
   const [editLocForm, setEditLocForm] = useState({ name: '', address: '' });
@@ -185,6 +186,7 @@ const AdminDashboard = () => {
   // Debug Panel State
   const [debugShift, setDebugShift] = useState({
     dateStr: '',
+    locationId: '',
     employeeId: '',
     partnerId: '',
     hookahs: 0,
@@ -269,7 +271,7 @@ const AdminDashboard = () => {
 
   const handleCreateDebugShift = async (e) => {
     e.preventDefault();
-    if (!debugShift.employeeId || !debugShift.dateStr) return alert('Выберите мастера и дату');
+    if (!debugShift.employeeId || !debugShift.dateStr || !debugShift.locationId) return alert('Выберите заведение, мастера и дату');
     
     const dStr = debugShift.dateStr.split('-').reverse().join('.');
     const emp = employees.find(e => e.id === debugShift.employeeId);
@@ -319,6 +321,7 @@ const AdminDashboard = () => {
         let ownerEarned = ownerBase + (ownerC1 * ownerBonus1) + (ownerC2 * ownerBonus2);
         
         await addDoc(collection(db, 'sales'), {
+          locationId: debugShift.locationId, locationName: locations.find(l => l.id === debugShift.locationId)?.name || 'Неизвестно',
           employeeId: partner.id, employeeName: partner.name,
           dateStr: dStr, endTime: serverTimestamp(), photoUrl: uploadedImageUrl,
           items: { cocktail1: partnerC1, cocktail2: partnerC2 },
@@ -329,6 +332,7 @@ const AdminDashboard = () => {
         });
 
         await addDoc(collection(db, 'sales'), {
+          locationId: debugShift.locationId, locationName: locations.find(l => l.id === debugShift.locationId)?.name || 'Неизвестно',
           employeeId: emp.id, employeeName: emp.name,
           dateStr: dStr, startTime: serverTimestamp(), endTime: serverTimestamp(), photoUrl: uploadedImageUrl,
           items: { cocktail1: ownerC1, cocktail2: ownerC2 },
@@ -341,6 +345,7 @@ const AdminDashboard = () => {
       } else {
         let myEarned = ownerBase + (c1 * ownerBonus1) + (c2 * ownerBonus2);
         await addDoc(collection(db, 'sales'), {
+          locationId: debugShift.locationId, locationName: locations.find(l => l.id === debugShift.locationId)?.name || 'Неизвестно',
           employeeId: emp.id, employeeName: emp.name,
           dateStr: dStr, startTime: serverTimestamp(), endTime: serverTimestamp(), photoUrl: uploadedImageUrl,
           items: { cocktail1: c1, cocktail2: c2 },
@@ -352,7 +357,7 @@ const AdminDashboard = () => {
       }
       
       alert('Смена успешно загружена!');
-      setDebugShift({ ...debugShift, hookahs: 0, replacements: 0, partnerId: '' });
+      setDebugShift({ ...debugShift, hookahs: 0, replacements: 0, partnerId: '', locationId: '' });
       setDebugShiftPhoto(null);
     } catch (err) {
       alert('Ошибка: ' + err.message);
@@ -410,11 +415,12 @@ const AdminDashboard = () => {
       await addDoc(collection(db, 'locations'), {
         name: newLocName,
         address: newLocAddress,
-        margin: newLocMargin,
+        profitHookah: Number(newLocProfitHookah) || ownerProfits.hookah,
+        profitReplacement: Number(newLocProfitReplacement) || ownerProfits.replacement,
         isActive: true,
         createdAt: serverTimestamp()
       });
-      setNewLocName(''); setNewLocAddress(''); setNewLocMargin(50);
+      setNewLocName(''); setNewLocAddress(''); setNewLocProfitHookah(''); setNewLocProfitReplacement('');
     } catch (error) { alert('Ошибка: ' + error.message); } finally { setIsAddingLoc(false); }
   };
 
@@ -456,7 +462,12 @@ const AdminDashboard = () => {
       totalItems: hookahs + replacements,
       shiftsCount,
       hasOpenShift,
-      ownerNetProfit: (hookahs * ownerProfits.hookah) + (replacements * ownerProfits.replacement)
+      ownerNetProfit: locationShifts.reduce((acc, s) => {
+        const loc = locations.find(l => l.id === s.locationId) || {};
+        const ph = loc.profitHookah !== undefined ? Number(loc.profitHookah) : ownerProfits.hookah;
+        const pr = loc.profitReplacement !== undefined ? Number(loc.profitReplacement) : ownerProfits.replacement;
+        return acc + ((s.items?.cocktail1 || 0) * ph) + ((s.items?.cocktail2 || 0) * pr);
+      }, 0)
     };
   }, [allShifts, ownerProfits, selectedMonth, selectedLocationId]);
 
@@ -471,7 +482,12 @@ const AdminDashboard = () => {
     const earned = filteredShifts.reduce((a, b) => a + (b.earned || 0), 0);
     const hookahs = filteredShifts.reduce((a, b) => a + (b.items?.cocktail1 || 0), 0);
     const replacements = filteredShifts.reduce((a, b) => a + (b.items?.cocktail2 || 0), 0);
-    const ownerProfit = (hookahs * ownerProfits.hookah) + (replacements * ownerProfits.replacement);
+    const ownerProfit = empShifts.reduce((acc, s) => {
+      const loc = locations.find(l => l.id === s.locationId) || {};
+      const ph = loc.profitHookah !== undefined ? Number(loc.profitHookah) : ownerProfits.hookah;
+      const pr = loc.profitReplacement !== undefined ? Number(loc.profitReplacement) : ownerProfits.replacement;
+      return acc + ((s.items?.cocktail1 || 0) * ph) + ((s.items?.cocktail2 || 0) * pr);
+    }, 0);
     
     const tamerlanEarned = filteredShifts
       .filter(s => s.employeeName && s.employeeName.trim().toLowerCase() === 'tamerlan')
@@ -485,8 +501,16 @@ const AdminDashboard = () => {
       )
       .reduce((a, b) => a + (b.cost || 0), 0);
 
-    const hookahProfit = hookahs * ownerProfits.hookah;
-    const replacementProfit = replacements * ownerProfits.replacement;
+    const hookahProfit = dayShifts.reduce((acc, s) => {
+      const loc = locations.find(l => l.id === s.locationId) || {};
+      const ph = loc.profitHookah !== undefined ? Number(loc.profitHookah) : ownerProfits.hookah;
+      return acc + ((s.items?.cocktail1 || 0) * ph);
+    }, 0);
+    const replacementProfit = dayShifts.reduce((acc, s) => {
+      const loc = locations.find(l => l.id === s.locationId) || {};
+      const pr = loc.profitReplacement !== undefined ? Number(loc.profitReplacement) : ownerProfits.replacement;
+      return acc + ((s.items?.cocktail2 || 0) * pr);
+    }, 0);
 
     return {
       earned,
@@ -510,7 +534,12 @@ const AdminDashboard = () => {
   const totalSystemEarned = closedSystemShifts.reduce((a,b) => a + (b.earned || 0), 0);
   const globalHookahs = closedSystemShifts.reduce((a,b) => a + (b.items?.cocktail1 || 0), 0);
   const globalReplacements = closedSystemShifts.reduce((a,b) => a + (b.items?.cocktail2 || 0), 0);
-  const globalOwnerProfit = (globalHookahs * ownerProfits.hookah) + (globalReplacements * ownerProfits.replacement);
+  const globalOwnerProfit = allClosedShifts.reduce((acc, s) => {
+    const loc = locations.find(l => l.id === s.locationId) || {};
+    const ph = loc.profitHookah !== undefined ? Number(loc.profitHookah) : ownerProfits.hookah;
+    const pr = loc.profitReplacement !== undefined ? Number(loc.profitReplacement) : ownerProfits.replacement;
+    return acc + ((s.items?.cocktail1 || 0) * ph) + ((s.items?.cocktail2 || 0) * pr);
+  }, 0);
   const globalStaffHookahs = closedSystemShifts.reduce((a,b) => a + (b.staffHookahs || 0), 0);
   
   const replacementRate = globalHookahs > 0 ? ((globalReplacements / globalHookahs) * 100).toFixed(1) : 0;
@@ -625,6 +654,7 @@ const AdminDashboard = () => {
             await deleteDoc(doc(db, 'sales', partnerRecord.id));
           }
           await addDoc(collection(db, 'sales'), {
+          locationId: debugShift.locationId, locationName: locations.find(l => l.id === debugShift.locationId)?.name || 'Неизвестно',
             employeeId: partner.id,
             employeeName: partner.name,
             dateStr: ownerRecord.dateStr,
@@ -1180,13 +1210,13 @@ const AdminDashboard = () => {
                     <div className="stat-card flex flex-col justify-center">
                       <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-1">С кальянов</p>
                       <h3 className="text-xl font-black text-primary">{formatMoney(monthlyStats.hookahProfit)} ₸</h3>
-                      <p className="text-slate-500 text-xs mt-1">{monthlyStats.hookahs} шт × {formatMoney(ownerProfits.hookah)} ₸</p>
+                      <p className="text-slate-500 text-xs mt-1">{monthlyStats.hookahs} шт (Индивидуально)</p>
                     </div>
 
                     <div className="stat-card flex flex-col justify-center">
                       <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest mb-1">С замен</p>
                       <h3 className="text-xl font-black text-blue-600">{formatMoney(monthlyStats.replacementProfit)} ₸</h3>
-                      <p className="text-slate-500 text-xs mt-1">{monthlyStats.replacements} шт × {formatMoney(ownerProfits.replacement)} ₸</p>
+                      <p className="text-slate-500 text-xs mt-1">{monthlyStats.replacements} шт (Индивидуально)</p>
                     </div>
                   </div>
 
@@ -1840,7 +1870,7 @@ const AdminDashboard = () => {
                 <form onSubmit={handleAddLocation} className="space-y-3">
                   <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Название</label><input type="text" value={newLocName} onChange={e=>setNewLocName(e.target.value)} placeholder="Напр. Основная" className="input-flat" required /></div>
                   <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Адрес</label><input type="text" value={newLocAddress} onChange={e=>setNewLocAddress(e.target.value)} placeholder="Напр. ул. Абая, 12" className="input-flat" /></div>
-                  <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Маржа (%)</label><input type="number" min="0" max="100" value={newLocMargin} onChange={e=>setNewLocMargin(Number(e.target.value))} placeholder="%" className="input-flat" required /></div>
+                  <div className="grid grid-cols-2 gap-2"><div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Прибыль: Кальян</label><input type="number" min="0" value={newLocProfitHookah} onChange={e=>setNewLocProfitHookah(e.target.value)} placeholder="В тенге" className="input-flat" /></div><div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Прибыль: Замена</label><input type="number" min="0" value={newLocProfitReplacement} onChange={e=>setNewLocProfitReplacement(e.target.value)} placeholder="В тенге" className="input-flat" /></div></div>
                   <button type="submit" disabled={isAddingLoc || !newLocName} className="w-full p-3 mt-1 bg-primary text-white rounded-xl font-bold disabled:opacity-30 text-sm">Добавить</button>
                 </form>
               </div>
@@ -1852,14 +1882,14 @@ const AdminDashboard = () => {
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="font-bold text-sm text-slate-900">{loc.name}</h3>
-                          <p className="text-xs font-medium text-slate-500 mt-0.5">{loc.address || 'Адрес не указан'} • {loc.margin || 50}% маржа</p>
+                          <p className="text-xs font-medium text-slate-500 mt-0.5">{loc.address || 'Адрес не указан'} • К: {loc.profitHookah || ownerProfits.hookah}₸ / З: {loc.profitReplacement || ownerProfits.replacement}₸</p>
                           <div className="mt-1">
                             {!loc.isActive ? <Badge variant="default">В архиве</Badge> : <Badge variant="success">Активна</Badge>}
                           </div>
                         </div>
                         <div className="flex gap-1.5">
                           {editingLocId !== loc.id && loc.isActive && (
-                            <button onClick={() => { setEditingLocId(loc.id); setEditLocForm({ name: loc.name || '', address: loc.address || '', margin: loc.margin || 50 }); }} className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"><Edit3 size={14}/></button>
+                            <button onClick={() => { setEditingLocId(loc.id); setEditLocForm({ name: loc.name || '', address: loc.address || '', profitHookah: loc.profitHookah || '', profitReplacement: loc.profitReplacement || '' }); }} className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"><Edit3 size={14}/></button>
                           )}
                           {!loc.isActive ? (
                             <button onClick={() => updateDoc(doc(db, 'locations', loc.id), { isActive: true })} className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors"><RotateCcw size={14}/></button>
@@ -1873,7 +1903,7 @@ const AdminDashboard = () => {
                         <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200 mt-2 animate-scale-in">
                           <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Название</label><input type="text" value={editLocForm.name} onChange={e=>setEditLocForm({...editLocForm, name: e.target.value})} className="input-flat text-sm p-2.5" /></div>
                           <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Адрес</label><input type="text" value={editLocForm.address} onChange={e=>setEditLocForm({...editLocForm, address: e.target.value})} className="input-flat text-sm p-2.5" /></div>
-                          <div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Маржа (%)</label><input type="number" min="0" max="100" value={editLocForm.margin} onChange={e=>setEditLocForm({...editLocForm, margin: Number(e.target.value)})} className="input-flat text-sm p-2.5" /></div>
+                          <div className="grid grid-cols-2 gap-2"><div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Прибыль: Кальян (₸)</label><input type="number" min="0" value={editLocForm.profitHookah} onChange={e=>setEditLocForm({...editLocForm, profitHookah: Number(e.target.value)})} className="input-flat text-sm p-2.5" /></div><div><label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Прибыль: Замена (₸)</label><input type="number" min="0" value={editLocForm.profitReplacement} onChange={e=>setEditLocForm({...editLocForm, profitReplacement: Number(e.target.value)})} className="input-flat text-sm p-2.5" /></div></div>
                           <div className="flex gap-2 pt-1">
                             <button onClick={() => setEditingLocId(null)} className="flex-1 py-2 bg-white/30 text-slate-400 rounded-lg text-xs font-bold hover:bg-white/50 transition-colors">Отмена</button>
                             <button onClick={() => handleSaveLocEdit(loc.id)} className="flex-1 py-2 bg-primary text-white rounded-lg text-xs font-bold shadow-md shadow-primary/20 hover:bg-primary-dark transition-colors">Сохранить</button>
@@ -1921,6 +1951,7 @@ const AdminDashboard = () => {
                 <p className="text-slate-500 mb-4 text-xs">Добавляет прошедшую смену со всеми параметрами.</p>
                 <form onSubmit={handleCreateDebugShift} className="space-y-4">
                   <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Дата</label><input type="date" value={debugShift.dateStr} onChange={e=>setDebugShift({...debugShift, dateStr: e.target.value})} className="input-flat" required /></div>
+                  <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Заведение</label><select value={debugShift.locationId || ''} onChange={e=>setDebugShift({...debugShift, locationId: e.target.value})} className="input-flat" required><option value="">Выберите точку</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></div>
                   <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Мастер</label><select value={debugShift.employeeId} onChange={e=>setDebugShift({...debugShift, employeeId: e.target.value})} className="input-flat" required><option value="">Выберите мастера</option>{employees.filter(e => !e.isArchived).map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}</select></div>
                   <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Напарник</label><select value={debugShift.partnerId} onChange={e=>setDebugShift({...debugShift, partnerId: e.target.value})} className="input-flat"><option value="">Без напарника</option>{employees.filter(e => !e.isArchived && e.id !== debugShift.employeeId).map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}</select></div>
                   <div className="grid grid-cols-2 gap-3"><div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Кальяны</label><input type="number" min="0" value={debugShift.hookahs} onChange={e=>setDebugShift({...debugShift, hookahs: Number(e.target.value)})} className="input-flat" /></div><div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Замены</label><input type="number" min="0" value={debugShift.replacements} onChange={e=>setDebugShift({...debugShift, replacements: Number(e.target.value)})} className="input-flat" /></div></div>
