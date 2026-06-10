@@ -5,9 +5,9 @@ import { Plus, Trash2, RotateCcw, MapPin, Edit3 } from 'lucide-react';
 
 
 const STATUS_LABELS = {
-  active: { label: 'Активно', cls: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' },
-  broken: { label: 'Сломано', cls: 'bg-red-500/15 text-red-400 border border-red-500/20' },
-  lost: { label: 'Утеряно', cls: 'bg-slate-500/15 text-slate-400 border border-slate-500/20' },
+  active: { label: 'Активно', cls: 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/20' },
+  broken: { label: 'Сломано', cls: 'bg-red-500/15 text-red-600 border border-red-200' },
+  lost: { label: 'Утеряно', cls: 'bg-gray-500/15 text-gray-400 border border-slate-500/20' },
 };
 
 const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) => {
@@ -72,13 +72,13 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-slate-900">Оборудование</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Кальяны, щипцы, плитки и другой инвентарь</p>
+          <h1 className="text-xl font-semibold text-gray-900">Оборудование</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Кальяны, щипцы, плитки и другой инвентарь</p>
         </div>
         <div className="flex gap-2">
-          <div className="flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/15 text-[10px] font-bold text-emerald-400">{totalActive} активно</div>
-          {totalBroken > 0 && <div className="flex items-center gap-1 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/15 text-[10px] font-bold text-red-400">{totalBroken} сломано</div>}
-          {totalLost > 0 && <div className="flex items-center gap-1 bg-slate-500/10 px-2 py-1 rounded-lg border border-slate-500/15 text-[10px] font-bold text-slate-400">{totalLost} утеряно</div>}
+          <div className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-500/15 text-xs font-bold text-emerald-600">{totalActive} активно</div>
+          {totalBroken > 0 && <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-lg border border-red-100 text-xs font-bold text-red-600">{totalBroken} сломано</div>}
+          {totalLost > 0 && <div className="flex items-center gap-1 bg-gray-500/10 px-2 py-1 rounded-lg border border-slate-500/15 text-xs font-medium text-gray-400">{totalLost} утеряно</div>}
         </div>
       </div>
 
@@ -86,16 +86,16 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
         {/* Форма добавления */}
         <div className="stat-card p-5 h-fit">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/15">
-              <Plus className="text-primary" size={18} />
+            <div className="w-9 h-9 bg-accent-50 rounded-lg flex items-center justify-center border border-accent-600/15">
+              <Plus className="text-accent-600" size={18} />
             </div>
-            <h2 className="text-sm font-black text-slate-900">Добавить</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Добавить</h2>
           </div>
           <form onSubmit={handleAdd} className="space-y-3">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Заведение</label>
+              <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Заведение</label>
               {selectedLocationId ? (
-                <div className="input-flat !bg-white/30 cursor-default">
+                <div className="input-flat !bg-gray-50 cursor-default">
                   {locations.find(l => l.id === selectedLocationId)?.name || 'Неизвестная точка'}
                 </div>
               ) : (
@@ -106,18 +106,18 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
               )}
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Название</label>
+              <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Название</label>
               <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Кальян Alpha, Щипцы..." className="input-flat" required />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Серийный номер / Заметка</label>
+              <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Серийный номер / Заметка</label>
               <input type="text" value={form.serialNumber} onChange={e => setForm({ ...form, serialNumber: e.target.value })} placeholder="Напр. SN-123, Чёрный" className="input-flat" />
             </div>
             <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Кол-во</label>
+                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Кол-во</label>
                 <input type="number" min="1" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} className="input-flat" />
               </div>
-            <button type="submit" disabled={isAdding || !form.name} className="w-full p-3 mt-1 bg-primary text-white rounded-xl font-bold shadow-sm disabled:opacity-40 transition flex items-center justify-center gap-2 text-sm">
+            <button type="submit" disabled={isAdding || !form.name} className="w-full p-3 mt-1 bg-accent-600 text-white rounded-xl font-bold shadow-sm disabled:opacity-40 transition flex items-center justify-center gap-2 text-sm">
               <Plus size={16} />
               {isAdding ? 'Добавление...' : 'Добавить'}
             </button>
@@ -127,7 +127,7 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
         {/* Список */}
         <div className="col-span-1 lg:col-span-2 space-y-6">
           {isLoading && (
-            <div className="flex items-center justify-center py-14 text-slate-500">
+            <div className="flex items-center justify-center py-14 text-gray-500">
               <div className="w-7 h-7 border-[3px] border-white border-t-primary rounded-full animate-spin" />
             </div>
           )}
@@ -135,41 +135,41 @@ const EquipmentTab = ({ locations, selectedLocationId, setSelectedLocationId }) 
           {!isLoading && filteredEquipment.length === 0 && (
             <div className="text-center py-14 stat-card">
               <p className="text-3xl mb-2">🔧</p>
-              <p className="text-slate-400 font-bold text-sm">Оборудование ещё не добавлено</p>
-              <p className="text-xs text-slate-500 mt-0.5">Добавьте через форму</p>
+              <p className="text-gray-400 font-bold text-sm">Оборудование ещё не добавлено</p>
+              <p className="text-xs text-gray-500 mt-0.5">Добавьте через форму</p>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredEquipment.map(item => {
                   const st = STATUS_LABELS[item.status] || STATUS_LABELS.active;
                   return (
-                    <div key={item.id} className={`stat-card p-4 transition-all ${item.status !== 'active' ? 'opacity-50' : 'hover:border-primary/20'}`}>
+                    <div key={item.id} className={`stat-card p-4 transition-all ${item.status !== 'active' ? 'opacity-50' : 'hover:border-accent-600/20'}`}>
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h4 className="font-black text-slate-900 text-sm">{item.name}</h4>
-                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${st.cls}`}>
+                            <h4 className="font-semibold text-gray-900 text-sm">{item.name}</h4>
+                            <span className={`px-2 py-0.5 rounded-md text-xs font-semibold uppercase tracking-wider ${st.cls}`}>
                               {st.label}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium flex-wrap">
+                          <div className="flex items-center gap-3 text-xs text-gray-500 font-medium flex-wrap">
                             <span className="flex items-center gap-1"><MapPin size={10}/>{item.locationName || '—'}</span>
                             <span>× {item.quantity} шт</span>
-                            {item.serialNumber && <span className="text-slate-400/60">#{item.serialNumber}</span>}
+                            {item.serialNumber && <span className="text-gray-400/60">#{item.serialNumber}</span>}
                           </div>
                         </div>
                         <div className="flex gap-1 ml-2">
                           {item.status === 'active' && (
                             <>
-                              <button onClick={() => updateStatus(item.id, 'broken')} title="Сломано" className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg hover:bg-amber-500/20 transition text-[10px]">💔</button>
-                              <button onClick={() => updateStatus(item.id, 'lost')} title="Утеряно" className="p-1.5 bg-slate-100 text-slate-400 rounded-lg hover:bg-white/30 transition text-[10px]">❓</button>
+                              <button onClick={() => updateStatus(item.id, 'broken')} title="Сломано" className="p-1.5 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-500/20 transition text-xs">💔</button>
+                              <button onClick={() => updateStatus(item.id, 'lost')} title="Утеряно" className="p-1.5 bg-gray-50 text-gray-400 rounded-lg hover:bg-gray-50 transition text-xs">❓</button>
                             </>
                           )}
                           {item.status !== 'active' && (
-                            <button onClick={() => updateStatus(item.id, 'active')} title="Восстановить" className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition"><RotateCcw size={12} /></button>
+                            <button onClick={() => updateStatus(item.id, 'active')} title="Восстановить" className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-50 transition"><RotateCcw size={12} /></button>
                           )}
-                          <button onClick={() => { if (window.confirm(`Удалить "${item.name}"?`)) deleteDoc(doc(db, 'equipment', item.id)); }} className="p-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition"><Trash2 size={12} /></button>
+                          <button onClick={() => { if (window.confirm(`Удалить "${item.name}"?`)) deleteDoc(doc(db, 'equipment', item.id)); }} className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-50 transition"><Trash2 size={12} /></button>
                         </div>
                       </div>
                     </div>

@@ -178,8 +178,8 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-slate-900">Ревизия табака</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Снимите ревизию в любое время — данные сохраняются в истории</p>
+          <h1 className="text-xl font-semibold text-gray-900">Ревизия табака</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Снимите ревизию в любое время — данные сохраняются в истории</p>
         </div>
       </div>
 
@@ -188,20 +188,20 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
         <div className="xl:col-span-2 space-y-4">
           <div className="stat-card p-5">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 bg-indigo-600/15 rounded-lg flex items-center justify-center border border-indigo-600/20">
-                <ClipboardCheck className="text-indigo-600" size={18} />
+              <div className="w-9 h-9 bg-accent-50 rounded-lg flex items-center justify-center border border-accent-100">
+                <ClipboardCheck className="text-accent-600" size={18} />
               </div>
               <div>
-                <h2 className="text-sm font-black text-slate-900">Провести ревизию</h2>
-                <p className="text-[10px] text-slate-500">Введите фактические остатки</p>
+                <h2 className="text-sm font-semibold text-gray-900">Провести ревизию</h2>
+                <p className="text-xs text-gray-500">Введите фактические остатки</p>
               </div>
             </div>
 
             <div className="space-y-3 mb-5">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Заведение</label>
+                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Заведение</label>
                 {locationId ? (
-                  <div className="input-flat !bg-white/30 cursor-default">
+                  <div className="input-flat !bg-gray-50 cursor-default">
                     {locations.find(l => l.id === locationId)?.name || 'Неизвестная точка'}
                   </div>
                 ) : (
@@ -217,7 +217,7 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Дата ревизии</label>
+                <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Дата ревизии</label>
                 <input
                   type="text"
                   value={revisionDate}
@@ -229,37 +229,37 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
 
               {/* Инфо: сколько кальянов продано */}
               {selectedLocForRevision && (
-                <div className="bg-primary/5 border border-primary/10 p-3 rounded-xl flex items-center gap-3">
-                  <Scale size={16} className="text-primary shrink-0" />
+                <div className="bg-accent-600/5 border border-accent-600/10 p-3 rounded-xl flex items-center gap-4">
+                  <Scale size={16} className="text-accent-600 shrink-0" />
                   <div>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">Продано кальянов</p>
-                    <p className="text-sm font-black text-primary">{soldHookahs} шт <span className="text-slate-500 font-medium">× {invStandards?.tobaccoPerBowl || 23}г = {formatMoney(soldHookahs * (invStandards?.tobaccoPerBowl || 23))}г расход</span></p>
+                    <p className="text-xs text-gray-500 font-bold uppercase">Продано кальянов</p>
+                    <p className="text-sm font-semibold text-accent-600">{soldHookahs} шт <span className="text-gray-500 font-medium">× {invStandards?.tobaccoPerBowl || 23}г = {formatMoney(soldHookahs * (invStandards?.tobaccoPerBowl || 23))}г расход</span></p>
                   </div>
                 </div>
               )}
             </div>
 
             {allTobaccoSorts.length === 0 ? (
-              <div className="text-center p-5 bg-amber-500/5 rounded-xl border border-amber-500/10">
-                <p className="text-amber-400 font-bold text-xs">⚠️ Нет сортов табака</p>
-                <p className="text-amber-400/60 text-[10px] mt-0.5">Добавьте сорта в Склад → Сорта табака</p>
+              <div className="text-center p-5 bg-amber-50 rounded-xl border border-amber-100">
+                <p className="text-amber-600 font-bold text-xs">Нет сортов табака</p>
+                <p className="text-amber-600/60 text-xs mt-0.5">Добавьте сорта в Склад → Сорта табака</p>
               </div>
             ) : (
               <>
                 <div className="space-y-2 mb-5">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Фактический остаток (г)</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Фактический остаток (г)</p>
                   {allTobaccoSorts.map(tt => {
                     const data = expectedByTobaccoType[tt.id] || { expected: 0 };
                     return (
-                    <div key={tt.id} className="flex items-center gap-3 bg-slate-100 p-2.5 rounded-xl border border-slate-200">
+                    <div key={tt.id} className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-xl border border-gray-200/60">
                       <div className="flex-1 min-w-0">
-                        <p className="font-black text-xs text-slate-800 truncate">{tt.name}</p>
-                        <p className="text-[9px] text-slate-500">{tt.pricePerGram.toFixed(1)} ₸/г</p>
+                        <p className="font-semibold text-xs text-gray-800 truncate">{tt.name}</p>
+                        <p className="text-xs text-gray-500">{tt.pricePerGram.toFixed(1)} ₸/г</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="text-right text-[10px] text-slate-500 leading-tight">
+                        <div className="text-right text-xs text-gray-500 leading-tight">
                           <p>Ожид:</p>
-                          <p className="font-bold text-slate-400">{Math.round(data.expected)}г</p>
+                          <p className="font-medium text-gray-400">{Math.round(data.expected)}г</p>
                         </div>
                         <input
                           type="number"
@@ -268,9 +268,9 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
                           value={actuals[tt.id] || ''}
                           onChange={e => setActuals(prev => ({ ...prev, [tt.id]: e.target.value }))}
                           placeholder="Факт"
-                          className="w-20 p-2 bg-white rounded-lg border border-slate-200 text-sm font-black text-center text-slate-900 outline-none focus:ring-2 focus:ring-indigo-600/30 focus:border-indigo-600/30 transition-all"
+                          className="w-20 p-2 bg-white rounded-lg border border-gray-200/60 text-sm font-semibold text-center text-gray-900 outline-none focus:ring-2 focus:ring-indigo-600/30 focus:border-indigo-600/30 transition-all"
                         />
-                        <span className="text-[10px] text-slate-500 font-bold">г</span>
+                        <span className="text-xs text-gray-500 font-bold">г</span>
                       </div>
                     </div>
                   );})}
@@ -281,15 +281,15 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
                   <div className="space-y-3 mb-4">
                     {/* Breakdown по каждому сорту */}
                     {revisionItems.filter(i => i.actualGrams > 0 || i.shortage > 0).map(item => (
-                      <div key={item.tobaccoTypeId} className={`p-3 rounded-xl border text-xs ${item.shortage > 0 ? 'bg-red-500/5 border-red-500/10' : 'bg-emerald-500/5 border-emerald-500/10'}`}>
+                      <div key={item.tobaccoTypeId} className={`p-3 rounded-xl border text-xs ${item.shortage > 0 ? 'bg-red-50 border-red-100' : 'bg-emerald-500/5 border-emerald-500/10'}`}>
                         <div className="flex justify-between items-center mb-1">
-                          <span className="font-bold text-slate-800">{item.tobaccoName}</span>
+                          <span className="font-medium text-gray-700">{item.tobaccoName}</span>
                           {item.shortage > 0 
-                            ? <span className="font-black text-red-400">−{item.shortage}г ({formatMoney(item.shortageInMoney)} ₸)</span>
-                            : <span className="font-black text-emerald-400">Норма {item.excess > 0 ? `+${item.excess}г` : ''}</span>
+                            ? <span className="font-semibold text-red-600">−{item.shortage}г ({formatMoney(item.shortageInMoney)} ₸)</span>
+                            : <span className="font-semibold text-emerald-600">Норма {item.excess > 0 ? `+${item.excess}г` : ''}</span>
                           }
                         </div>
-                        <div className="flex gap-4 text-[10px] text-slate-500">
+                        <div className="flex gap-4 text-xs text-gray-500">
                           <span>Приход: {formatMoney(item.incoming)}г</span>
                           <span>Расход: {formatMoney(item.used)}г</span>
                           <span>Ожид: {formatMoney(item.expectedGrams)}г</span>
@@ -300,21 +300,21 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
 
                     {/* Общий итог */}
                     {hasShortage ? (
-                      <div className="bg-red-500/10 border border-red-500/15 p-4 rounded-xl">
+                      <div className="bg-red-50 border border-red-100 p-4 rounded-xl">
                         <div className="flex items-center gap-2 mb-1">
-                          <AlertTriangle className="text-red-400" size={16} />
-                          <p className="font-black text-red-400 text-sm">Общая недостача</p>
+                          <AlertTriangle className="text-red-600" size={16} />
+                          <p className="font-semibold text-red-600 text-sm">Общая недостача</p>
                         </div>
-                        <div className="flex items-baseline gap-3">
-                          <p className="text-2xl font-black text-red-400">{formatMoney(totalShortage)} ₸</p>
-                          <p className="text-xs text-red-400/60">{totalShortageGrams}г</p>
+                        <div className="flex items-baseline gap-4">
+                          <p className="text-2xl font-semibold text-red-600">{formatMoney(totalShortage)} ₸</p>
+                          <p className="text-xs text-red-600/60">{totalShortageGrams}г</p>
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-emerald-500/10 border border-emerald-500/15 p-4 rounded-xl">
+                      <div className="bg-emerald-50 border border-emerald-500/15 p-4 rounded-xl">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="text-emerald-400" size={16} />
-                          <p className="font-black text-emerald-400 text-sm">Недостачи нет — всё сходится!</p>
+                          <CheckCircle2 className="text-emerald-600" size={16} />
+                          <p className="font-semibold text-emerald-600 text-sm">Недостачи нет — всё сходится!</p>
                         </div>
                       </div>
                     )}
@@ -336,10 +336,10 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
 
         {/* История ревизий */}
         <div className="xl:col-span-3 space-y-4">
-          <h2 className="text-sm font-black text-slate-900">История ревизий</h2>
+          <h2 className="text-sm font-semibold text-gray-900">История ревизий</h2>
 
           {isLoading && (
-            <div className="flex items-center justify-center py-12 text-slate-500">
+            <div className="flex items-center justify-center py-12 text-gray-500">
               <div className="w-7 h-7 border-[3px] border-white border-t-indigo-600 rounded-full animate-spin" />
             </div>
           )}
@@ -347,8 +347,8 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
           {!isLoading && filteredRevisions.length === 0 && (
             <div className="text-center py-14 stat-card">
               <p className="text-3xl mb-2">📋</p>
-              <p className="text-slate-400 font-bold text-sm">Ревизий пока нет</p>
-              <p className="text-xs text-slate-500 mt-0.5">Проведите первую ревизию через форму</p>
+              <p className="text-gray-400 font-bold text-sm">Ревизий пока нет</p>
+              <p className="text-xs text-gray-500 mt-0.5">Проведите первую ревизию через форму</p>
             </div>
           )}
 
@@ -363,32 +363,32 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
                     onClick={() => setExpandedRevId(isExpanded ? null : rev.id)}
                   >
                     <div className="flex items-center gap-3 text-left">
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${rev.totalShortage > 0 ? 'bg-red-500/10 border border-red-500/15' : 'bg-emerald-500/10 border border-emerald-500/15'}`}>
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${rev.totalShortage > 0 ? 'bg-red-50 border border-red-100' : 'bg-emerald-50 border border-emerald-500/15'}`}>
                         {rev.totalShortage > 0
-                          ? <AlertTriangle className="text-red-400" size={16} />
-                          : <CheckCircle2 className="text-emerald-400" size={16} />
+                          ? <AlertTriangle className="text-red-600" size={16} />
+                          : <CheckCircle2 className="text-emerald-600" size={16} />
                         }
                       </div>
                       <div>
-                        <p className="font-black text-slate-900 text-sm">{revDate}</p>
-                        <div className="flex items-center gap-3 text-[10px] text-slate-500 mt-0.5">
+                        <p className="font-semibold text-gray-900 text-sm">{revDate}</p>
+                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
                           <span className="flex items-center gap-1"><MapPin size={9}/>{rev.locationName || '—'}</span>
                           {rev.soldHookahs != null && <span>{rev.soldHookahs} кальянов</span>}
                           {rev.totalShortage > 0
-                            ? <span className="text-red-400 font-black">−{formatMoney(rev.totalShortage)} ₸</span>
-                            : <span className="text-emerald-400 font-black">Норма</span>
+                            ? <span className="text-red-600 font-semibold">−{formatMoney(rev.totalShortage)} ₸</span>
+                            : <span className="text-emerald-600 font-semibold">Норма</span>
                           }
                         </div>
                       </div>
                     </div>
-                    {isExpanded ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+                    {isExpanded ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-slate-200 overflow-hidden">
+                    <div className="border-t border-gray-200/60 overflow-hidden">
                       <table className="w-full text-xs">
                         <thead>
-                          <tr className="bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest">
+                          <tr className="bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wide">
                             <th className="px-4 py-2 text-left">Сорт</th>
                             <th className="px-2 py-2 text-right">Ожидалось</th>
                             <th className="px-2 py-2 text-right">Факт</th>
@@ -399,13 +399,13 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
                         <tbody className="divide-y divide-white/10">
                           {(rev.items || []).map((item, i) => (
                             <tr key={i} className={item.shortage > 0 ? 'bg-red-500/3' : ''}>
-                              <td className="px-4 py-2 font-bold text-slate-800">{item.tobaccoName}</td>
-                              <td className="px-2 py-2 text-right text-slate-500">{item.expectedGrams}г</td>
-                              <td className="px-2 py-2 text-right font-bold text-slate-800">{item.actualGrams}г</td>
-                              <td className={`px-2 py-2 text-right font-black ${item.shortage > 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                              <td className="px-4 py-2 font-medium text-gray-700">{item.tobaccoName}</td>
+                              <td className="px-2 py-2 text-right text-gray-500">{item.expectedGrams}г</td>
+                              <td className="px-2 py-2 text-right font-medium text-gray-700">{item.actualGrams}г</td>
+                              <td className={`px-2 py-2 text-right font-semibold ${item.shortage > 0 ? 'text-red-600' : 'text-gray-500'}`}>
                                 {item.shortage > 0 ? `−${item.shortage}г` : '—'}
                               </td>
-                              <td className={`px-4 py-2 text-right font-black ${item.shortageInMoney > 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                              <td className={`px-4 py-2 text-right font-semibold ${item.shortageInMoney > 0 ? 'text-red-600' : 'text-gray-500'}`}>
                                 {item.shortageInMoney > 0 ? `−${formatMoney(item.shortageInMoney)} ₸` : '—'}
                               </td>
                             </tr>
@@ -413,9 +413,9 @@ const RevisionTab = ({ locationId, locations, allTobaccoSorts = [], allShifts, i
                         </tbody>
                         {rev.totalShortage > 0 && (
                           <tfoot>
-                            <tr className="bg-red-500/5 border-t-2 border-red-500/10">
-                              <td colSpan={4} className="px-4 py-2 font-black text-red-400 text-xs">Итого недостача</td>
-                              <td className="px-4 py-2 text-right font-black text-red-400 text-sm">−{formatMoney(rev.totalShortage)} ₸</td>
+                            <tr className="bg-red-50 border-t-2 border-red-100">
+                              <td colSpan={4} className="px-4 py-2 font-semibold text-red-600 text-xs">Итого недостача</td>
+                              <td className="px-4 py-2 text-right font-semibold text-red-600 text-sm">−{formatMoney(rev.totalShortage)} ₸</td>
                             </tr>
                           </tfoot>
                         )}
