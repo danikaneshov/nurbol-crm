@@ -1,39 +1,37 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import EmployeeApp from './components/EmployeeApp';
+import EmployeeApp from './client/EmployeeAppNew';
 import AdminLogin from './components/AdminLogin';
-import AdminDashboard from './components/AdminDashboard';
+import AdminDashboard from './admin/AdminDashboardNew';
 import ProtectedRoute from './components/ProtectedRoute'; // Импортируем охранника
 import useDynamicFavicon from './hooks/useDynamicFavicon';
-import LocationSelector from './components/LocationSelector';
 
 function AppRoutes() {
-  useDynamicFavicon(); // Динамическая смена favicon по роуту
+ useDynamicFavicon(); // Динамическая смена favicon по роуту
 
-  return (
-    <Routes>
-      <Route path="/" element={<LocationSelector />} />
-      <Route path="/app" element={<EmployeeApp />} />
-      <Route path="/admin/login" element={<AdminLogin />} />
-      
-      {/* Защищаем маршрут админки */}
-      <Route 
-        path="/admin" 
-        element={
-          <ProtectedRoute>
-            <AdminDashboard />
-          </ProtectedRoute>
-        } 
-      />
-    </Routes>
-  );
+ return (
+ <Routes>
+ <Route path="/" element={<EmployeeApp />} />
+ <Route path="/admin/login" element={<AdminLogin />} />
+ 
+ {/* Защищаем маршрут админки */}
+ <Route 
+ path="/admin" 
+ element={
+ <ProtectedRoute>
+ <AdminDashboard />
+ </ProtectedRoute>
+ } 
+ />
+ </Routes>
+ );
 }
 
 function App() {
-  return (
-    <Router>
-      <AppRoutes />
-    </Router>
-  );
+ return (
+ <Router>
+ <AppRoutes />
+ </Router>
+ );
 }
 
 export default App;

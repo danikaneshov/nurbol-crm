@@ -20,15 +20,15 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 let db;
 try {
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  });
+ db = initializeFirestore(app, {
+ localCache: persistentLocalCache({
+ tabManager: persistentMultipleTabManager()
+ })
+ });
 } catch (e) {
-  console.warn('Persistent cache failed, falling back to memory cache:', e);
-  db = initializeFirestore(app, {
-    localCache: memoryLocalCache()
-  });
+ console.warn('Persistent cache failed, falling back to memory cache:', e);
+ db = initializeFirestore(app, {
+ localCache: memoryLocalCache()
+ });
 }
 export { db };

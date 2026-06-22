@@ -1,7 +1,7 @@
 {
-  "name": "ERP Client",
-  "short_name": "ERP",
-  "description": "ERP — Client",
+  "name": "Fifty Client",
+  "short_name": "Fifty",
+  "description": "Fifty ERP — Client",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

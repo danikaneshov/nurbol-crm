@@ -1,7 +1,7 @@
 {
-  "name": "ERP Admin",
-  "short_name": "ERP Admin",
-  "description": "ERP — Admin Panel",
+  "name": "CRM ERP",
+  "short_name": "CRM Admin",
+  "description": "CRM ERP — Admin Panel",
   "start_url": "/admin",
   "scope": "/admin",
   "display": "standalone",

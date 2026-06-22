@@ -3,56 +3,63 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req, res) {
-  // Разрешаем только POST-запросы
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { imageUrl } = req.body;
+  const { imageUrl, positions } = req.body;
 
   if (!imageUrl) {
     return res.status(400).json({ error: 'Необходима ссылка на изображение' });
   }
+  if (!positions || !Array.isArray(positions)) {
+    return res.status(400).json({ error: 'Необходим список позиций (positions)' });
+  }
 
-  // Берем ключ из переменных окружения Vercel
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    // Скачиваем картинку по ссылке из Cloudinary
     const imageResp = await fetch(imageUrl);
     if (!imageResp.ok) {
       throw new Error(`Не удалось скачать изображение: ${imageResp.status}`);
     }
     const arrayBuffer = await imageResp.arrayBuffer();
     
-    // Определяем MIME-тип из ответа Cloudinary (вместо хардкода)
     const contentType = imageResp.headers.get('content-type') || 'image/jpeg';
     const mimeType = contentType.split(';')[0].trim();
     
-    // Формируем строгий промпт (инструкцию) для Gemini
+    let positionsPrompt = "Твоя задача: найти количество проданных позиций из списка ниже по их ID и названию:\n";
+    positions.forEach(p => {
+      positionsPrompt += `- Ключ (ID): "${p.id}", Код в чеке: "${p.receiptId}", Название: "${p.receiptName}"\n`;
+    });
+
+    const exampleJson = positions.reduce((acc, p) => {
+      acc[p.id] = 0;
+      return acc;
+    }, {});
+    
     const prompt = `
-      Ты — автоматизированный ассистент по учету продаж в кальянной.
+      Ты — автоматизированный ассистент по учету продаж в заведении.
       
-      Проанализируй фото отчета о закрытии смены. Это может быть кассовый чек, рукописная запись, скриншот из системы учёта или любой другой формат отчёта.
+      Проанализируй фото отчета о закрытии смены (кассовый чек).
       
-      Твоя задача: найти количество проданных КАЛЬЯНОВ двух типов:
-      - "cocktail1" — основной кальян. Может называться: "Дымный коктейль 1", "Кальян", "Hookah", "ДК1", "Коктейль 1", "Калян", или просто первая позиция кальянов в списке.
-      - "cocktail2" — замена/второй тип. Может называться: "Дымный коктейль 2", "Замена", "ДК2", "Коктейль 2", или вторая позиция кальянов.
+      ${positionsPrompt}
       
       Правила:
-      1. Ищи КОЛИЧЕСТВО проданных штук, а не цену.
-      2. Если видишь только одну общую позицию кальянов без разделения — запиши всё в cocktail1, а cocktail2 = 0.
-      3. Если позиция не найдена — пиши 0.
+      1. Ищи КОЛИЧЕСТВО проданных штук (qty/кол-во), а не цену.
+      2. Обязательно сверяй Код в чеке. Код часто находится слева от названия.
+      3. Если позиция с таким кодом или названием не найдена — пиши 0.
       4. Не путай количество с ценой или номером позиции.
-      5. Внимательно читай числа — не путай 1 и 7, 6 и 8.
+      5. Внимательно читай числа.
       
-      ВЕРНИ ОТВЕТ СТРОГО В ФОРМАТЕ JSON, без Markdown, без комментариев, без лишних слов:
-      {"cocktail1": X, "cocktail2": Y}
+      ВЕРНИ ОТВЕТ СТРОГО В ФОРМАТЕ JSON, без Markdown, без комментариев.
+      Ключами должны быть строго Ключ (ID) позиции.
+      Пример ответа:
+      ${JSON.stringify(exampleJson, null, 2)}
     `;
 
-    // Отправляем запрос
     const result = await model.generateContent([
       prompt,
       {
@@ -65,42 +72,32 @@ export default async function handler(req, res) {
 
     const responseText = result.response.text();
     
-    // Надёжный парсинг: убираем markdown-обёртки и ищем JSON
-    let parsedData;
+    let parsedData = {};
     try {
-      // Убираем ```json ... ``` обёртки
       const cleanJsonString = responseText
         .replace(/```(?:json)?\s*/gi, '')
         .replace(/```/g, '')
         .trim();
       parsedData = JSON.parse(cleanJsonString);
     } catch {
-      // Фоллбэк: извлекаем JSON через regex
-      const jsonMatch = responseText.match(/\{[\s\S]*?"cocktail1"\s*:\s*(\d+)[\s\S]*?"cocktail2"\s*:\s*(\d+)[\s\S]*?\}/);
-      if (jsonMatch) {
-        parsedData = {
-          cocktail1: parseInt(jsonMatch[1], 10),
-          cocktail2: parseInt(jsonMatch[2], 10)
-        };
-      } else {
-        // Последняя попытка: ищем любые два числа в контексте
-        const numbers = responseText.match(/\d+/g);
-        if (numbers && numbers.length >= 2) {
-          parsedData = {
-            cocktail1: parseInt(numbers[0], 10),
-            cocktail2: parseInt(numbers[1], 10)
-          };
+      console.warn("Regex fallback for JSON parsing");
+      // Fallback: very basic regex trying to find "key": number
+      positions.forEach(p => {
+        const regex = new RegExp(`"${p.id}"\\s*:\\s*(\\d+)`, 'i');
+        const match = responseText.match(regex);
+        if (match) {
+          parsedData[p.id] = parseInt(match[1], 10);
         } else {
-          throw new Error(`Не удалось распарсить ответ Gemini: ${responseText}`);
+          parsedData[p.id] = 0;
         }
-      }
+      });
     }
 
-    // Валидация: убеждаемся что значения — числа
-    parsedData.cocktail1 = Number(parsedData.cocktail1) || 0;
-    parsedData.cocktail2 = Number(parsedData.cocktail2) || 0;
+    // Ensure all positions exist in parsedData and are numbers
+    positions.forEach(p => {
+      parsedData[p.id] = Number(parsedData[p.id]) || 0;
+    });
 
-    // Возвращаем результат обратно в приложение
     res.status(200).json(parsedData);
 
   } catch (error) {

@@ -1,0 +1,95 @@
+import React from 'react';
+import { LayoutDashboard, Calendar as CalendarIcon, Users, Package, Settings, LogOut } from 'lucide-react';
+import { useAdmin } from '../context/AdminContext';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../firebase';
+
+const Sidebar = () => {
+ const { activeTab, switchTab, locations, selectedLocationId, setSelectedLocationId } = useAdmin();
+
+ return (
+ <div className="hidden lg:flex flex-col w-[280px] fixed inset-y-6 left-6 z-40 glass rounded-[40px] p-8">
+ <div className="mb-8 px-2">
+ <span className="text-3xl font-black tracking-tighter text-slate-900 ">
+ ERP<span className="text-slate-900 ">.</span>
+ </span>
+ </div>
+ 
+ <div className="mb-8">
+ <select 
+ value={selectedLocationId} 
+ onChange={(e) => setSelectedLocationId(e.target.value)}
+ className="w-full bg-slate-100 border-none text-slate-700 font-bold px-4 py-3 pr-10 rounded-2xl appearance-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner outline-none"
+ >
+ {locations.length === 0 && <option value="">Нет точек</option>}
+ {locations.map(loc => (
+ <option key={loc.id} value={loc.id}>{loc.name}</option>
+ ))}
+ </select>
+ </div>
+
+ <nav className="flex-1 space-y-3">
+ <button
+ onClick={() => switchTab('dashboard')}
+ className={`w-full flex items-center gap-4 p-4 rounded-3xl font-bold transition-all duration-300 ${
+ activeTab === 'dashboard'
+ ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 translate-x-1'
+ : 'text-slate-400 hover:bg-white hover:text-slate-900 hover:shadow-md hover:translate-x-1'
+ }`}
+ >
+ <LayoutDashboard size={22} />Дашборд
+ </button>
+ <button
+ onClick={() => switchTab('shifts', 'calendar')}
+ className={`w-full flex items-center gap-4 p-4 rounded-3xl font-bold transition-all duration-300 ${
+ activeTab === 'shifts'
+ ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 translate-x-1'
+ : 'text-slate-400 hover:bg-white hover:text-slate-900 hover:shadow-md hover:translate-x-1'
+ }`}
+ >
+ <CalendarIcon size={22} />Смены
+ </button>
+ <button
+ onClick={() => switchTab('team', 'salaries')}
+ className={`w-full flex items-center gap-4 p-4 rounded-3xl font-bold transition-all duration-300 ${
+ activeTab === 'team'
+ ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 translate-x-1'
+ : 'text-slate-400 hover:bg-white hover:text-slate-900 hover:shadow-md hover:translate-x-1'
+ }`}
+ >
+ <Users size={22} />Команда
+ </button>
+ <button
+ onClick={() => switchTab('inventory', 'stock')}
+ className={`w-full flex items-center gap-4 p-4 rounded-3xl font-bold transition-all duration-300 ${
+ activeTab === 'inventory'
+ ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 translate-x-1'
+ : 'text-slate-400 hover:bg-white hover:text-slate-900 hover:shadow-md hover:translate-x-1'
+ }`}
+ >
+ <Package size={22} />Склад
+ </button>
+ <button
+ onClick={() => switchTab('settings', 'margins')}
+ className={`w-full flex items-center gap-4 p-4 rounded-3xl font-bold transition-all duration-300 ${
+ activeTab === 'settings'
+ ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 translate-x-1'
+ : 'text-slate-400 hover:bg-white hover:text-slate-900 hover:shadow-md hover:translate-x-1'
+ }`}
+ >
+ <Settings size={22} />Настройки
+ </button>
+ </nav>
+ <div className="flex flex-col gap-2 mt-8 border-t border-slate-100 pt-6">
+ <button
+ onClick={() => signOut(auth)}
+ className="flex items-center gap-4 p-4 text-slate-400 font-bold hover:text-red-500 hover:bg-red-50 :bg-red-900/20 rounded-3xl transition-all duration-300"
+ >
+ <LogOut size={22} />Выйти
+ </button>
+ </div>
+ </div>
+ );
+};
+
+export default Sidebar;

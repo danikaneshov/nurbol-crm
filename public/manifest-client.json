@@ -1,7 +1,7 @@
 {
-  "name": "ERP Client",
-  "short_name": "ERP",
-  "description": "ERP — Client",
+  "name": "CRM Client",
+  "short_name": "CRM",
+  "description": "CRM ERP — Client",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

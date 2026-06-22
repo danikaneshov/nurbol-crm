@@ -1,119 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  html, body {
-    @apply m-0 p-0 w-full h-full;
-  }
-  
-  body {
-    @apply bg-[#FAFBFC] text-gray-900 font-sans antialiased;
-    touch-action: manipulation;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  }
+ html {
+ -webkit-text-size-adjust: 100%;
+ -webkit-tap-highlight-color: transparent;
+ -webkit-touch-callout: none;
+ }
+ 
+ body {
+ @apply text-slate-900 font-sans antialiased selection:bg-blue-200 selection:text-blue-900 transition-colors duration-300;
+ background-color: #f8fafc;
+ background-attachment: fixed;
+ margin: 0;
+ -webkit-overflow-scrolling: touch;
+ min-height: 100vh;
+ min-height: -webkit-fill-available;
+ display: flex;
+ flex-direction: column;
+ }
 
-  /* Premium scrollbar */
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #D1D5DB;
-    border-radius: 999px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #9CA3AF;
-  }
+ #root {
+ flex: 1;
+ display: flex;
+ flex-direction: column;
+ width: 100%;
+ min-height: 100%;
+ }
+ 
+ h1 { @apply text-4xl leading-tight font-black; }
+ h2 { @apply text-3xl leading-snug font-extrabold; }
+ h3 { @apply text-2xl leading-normal font-bold; }
+ h4 { @apply text-xl leading-normal font-bold; }
+ 
+ code, pre, .mono {
+ @apply font-mono;
+ }
 
-  button, input, select, textarea {
-    touch-action: manipulation;
-    font-family: inherit;
-  }
+ /* Prevent iOS double-tap zoom on buttons and inputs */
+ button, input, select, textarea {
+ touch-action: manipulation;
+ }
 
-  input[type="number"]::-webkit-inner-spin-button,
-  input[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  select {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239CA3AF' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.625rem center;
-    background-repeat: no-repeat;
-    background-size: 1.25em 1.25em;
-    padding-right: 2.5rem;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-  }
-
-  ::selection {
-    background: #C7D2FE;
-    color: #312E81;
-  }
+ /* Prevent text selection on interactive elements in PWA */
+ .no-select {
+ -webkit-user-select: none;
+ user-select: none;
+ }
 }
 
 @layer utilities {
-  .pt-safe { padding-top: env(safe-area-inset-top); }
-  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-  .pl-safe { padding-left: env(safe-area-inset-left); }
-  .pr-safe { padding-right: env(safe-area-inset-right); }
+ .skeleton {
+ background: linear-gradient(
+ 90deg, 
+ #f3f4f6 25%, 
+ #e5e7eb 50%, 
+ #f3f4f6 75%
+ );
+ background-size: 1000px 100%;
+ animation: shimmer 2s infinite linear;
+ }
+ 
+ .dark .skeleton {
+ background: linear-gradient(
+ 90deg, 
+ #1e293b 25%, 
+ #334155 50%, 
+ #1e293b 75%
+ );
+ background-size: 1000px 100%;
+ }
 
-  .scrollable-tabs {
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; 
-    -ms-overflow-style: none;
-    overflow-x: auto;
-  }
-  .scrollable-tabs::-webkit-scrollbar {
-    display: none;
-  }
+ .pt-safe { padding-top: env(safe-area-inset-top); }
+ .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+ .pl-safe { padding-left: env(safe-area-inset-left); }
+ .pr-safe { padding-right: env(safe-area-inset-right); }
+ .mb-safe { margin-bottom: env(safe-area-inset-bottom); }
 
-  .no-select {
-    -webkit-user-select: none;
-    user-select: none;
-  }
+ /* Scrollable tab bar — hides scrollbar but allows horizontal scroll */
+ .scrollable-tabs {
+ overflow-x: auto;
+ -webkit-overflow-scrolling: touch;
+ scrollbar-width: none;
+ -ms-overflow-style: none;
+ }
+ .scrollable-tabs::-webkit-scrollbar {
+ display: none;
+ }
+
+ .glass {
+ @apply bg-white/90 backdrop-blur-xl border border-white/60 shadow-[0_8px_30px_rgba(79,70,229,0.08)];
+ }
+ .glass-dark {
+ @apply bg-slate-900/80 backdrop-blur-2xl border border-slate-700/50 shadow-2xl shadow-blue-900/20 text-white;
+ }
+ .smooth-shadow {
+ box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05);
+ }
 }
 
 @layer components {
-  /* ─── Input ─── */
-  .input-flat {
-    @apply w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900
-           outline-none transition-all duration-150
-           focus:bg-white focus:border-accent-400 focus:ring-2 focus:ring-accent-100
-           placeholder:text-gray-400;
-  }
-
-  /* ─── Sidebar Nav ─── */
-  .nav-item {
-    @apply w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150;
-  }
-  .nav-item-active {
-    @apply bg-accent-50 text-accent-600;
-  }
-  .nav-item-inactive {
-    @apply text-gray-500 hover:bg-gray-50 hover:text-gray-900;
-  }
-
-  /* ─── Pill Tabs ─── */
-  .pill-tab {
-    @apply px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors duration-150 whitespace-nowrap cursor-pointer;
-  }
-  .pill-tab-active {
-    @apply bg-gray-900 text-white;
-  }
-  .pill-tab-inactive {
-    @apply text-gray-500 hover:text-gray-700 hover:bg-gray-100;
-  }
-
-  /* ─── Stat Card ─── */
-  .stat-card {
-    @apply bg-white border border-gray-200/60 rounded-xl p-5;
-  }
+ .btn-hover-effect {
+ @apply transition-all duration-200 active:scale-95 hover:-translate-y-0.5 hover:shadow-lg;
+ }
+ 
+ .card-hover-effect {
+ @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+ }
 }

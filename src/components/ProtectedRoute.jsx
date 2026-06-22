@@ -3,9 +3,9 @@ import { Navigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 
-const MIN_LOADING_MS = 2200; // Минимальное время показа оверлея, чтобы данные БД успели подтянуться
+const MIN_LOADING_MS = 500; // Уменьшенное время показа оверлея
 
-// Общий оверлей — прозрачный блюр + синяя полоска загрузки сверху
+// Общий оверлей — прозрачный блюр + кружочек загрузки
 const LoadingOverlay = ({ fading }) => (
   <>
     <div
@@ -19,97 +19,84 @@ const LoadingOverlay = ({ fading }) => (
         opacity: fading ? 0 : 1,
         transition: 'opacity 0.5s ease',
         pointerEvents: fading ? 'none' : 'auto',
-      }}
-    />
-    {/* Синяя полоса загрузки сверху */}
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '3px',
-        zIndex: 10000,
-        overflow: 'hidden',
-        opacity: fading ? 0 : 1,
-        transition: 'opacity 0.5s ease',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}
     >
-      <div
+      <div 
         style={{
-          height: '100%',
-          width: '40%',
-          background: 'linear-gradient(90deg, transparent, #3b82f6, #60a5fa, #3b82f6, transparent)',
-          borderRadius: '2px',
-          animation: 'loadingBar 1.4s ease-in-out infinite',
+          width: '40px',
+          height: '40px',
+          border: '4px solid rgba(59, 130, 246, 0.2)',
+          borderTopColor: '#3b82f6',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
         }}
       />
     </div>
     <style>{`
-      @keyframes loadingBar {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(350%); }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
     `}</style>
   </>
 );
 
 const ProtectedRoute = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [authResolved, setAuthResolved] = useState(false);
-  const [overlayVisible, setOverlayVisible] = useState(true);
-  const [overlayFading, setOverlayFading] = useState(false);
-  const loadStartRef = useRef(Date.now());
+ const [user, setUser] = useState(null);
+ const [authResolved, setAuthResolved] = useState(false);
+ const [overlayVisible, setOverlayVisible] = useState(true);
+ const [overlayFading, setOverlayFading] = useState(false);
+ const loadStartRef = useRef(null);
 
-  useEffect(() => {
-    // onAuthStateChanged слушает изменения статуса авторизации в Firebase
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser && import.meta.env.DEV) {
-        setUser({ email: 'dev@crm.com', uid: 'dev-admin' });
-      } else {
-        setUser(currentUser);
-      }
-      setAuthResolved(true);
-    });
+ useEffect(() => {
+ if (!loadStartRef.current) loadStartRef.current = Date.now();
+ // onAuthStateChanged слушает изменения статуса авторизации в Firebase
+ const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+ setUser(currentUser);
+ setAuthResolved(true);
+ });
 
-    // Отписываемся от слушателя, когда компонент удаляется
-    return () => unsubscribe();
-  }, []);
+ // Отписываемся от слушателя, когда компонент удаляется
+ return () => unsubscribe();
+ }, []);
 
-  useEffect(() => {
-    if (!authResolved) return;
+ useEffect(() => {
+ if (!authResolved) return;
 
-    // Выдерживаем минимальное время показа, чтобы данные в фоне загрузились
-    const elapsed = Date.now() - loadStartRef.current;
-    const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+ // Выдерживаем минимальное время показа, чтобы данные в фоне загрузились
+ const elapsed = Date.now() - loadStartRef.current;
+ const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
 
-    const timer = setTimeout(() => {
-      // Сначала запускаем fade-out анимацию
-      setOverlayFading(true);
-      // Потом полностью убираем оверлей из DOM
-      setTimeout(() => setOverlayVisible(false), 500);
-    }, remaining);
+ const timer = setTimeout(() => {
+ // Сначала запускаем fade-out анимацию
+ setOverlayFading(true);
+ // Потом полностью убираем оверлей из DOM
+ setTimeout(() => setOverlayVisible(false), 500);
+ }, remaining);
 
-    return () => clearTimeout(timer);
-  }, [authResolved]);
+ return () => clearTimeout(timer);
+ }, [authResolved]);
 
-  // Пока auth не проверен — показываем только оверлей (без контента под ним)
-  if (!authResolved) {
-    return <LoadingOverlay fading={false} />;
-  }
+ // Пока auth не проверен — показываем только оверлей (без контента под ним)
+ if (!authResolved) {
+ return <LoadingOverlay fading={false} />;
+ }
 
-  // Если пользователя нет, жестко перенаправляем на страницу входа
-  if (!user) {
-    return <Navigate to="/admin/login" replace />;
-  }
+ // Если пользователя нет, жестко перенаправляем на страницу входа
+ if (!user) {
+ return <Navigate to="/admin/login" replace />;
+ }
 
-  // Рендерим контент + прозрачный блюр-оверлей поверх, пока данные подгружаются
-  return (
-    <>
-      {children}
-      {overlayVisible && <LoadingOverlay fading={overlayFading} />}
-    </>
-  );
+ // Рендерим контент + прозрачный блюр-оверлей поверх, пока данные подгружаются
+ return (
+ <>
+ {children}
+ {overlayVisible && <LoadingOverlay fading={overlayFading} />}
+ </>
+ );
 };
 
 export default ProtectedRoute;
