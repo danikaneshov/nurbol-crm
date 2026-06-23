@@ -76,14 +76,23 @@ const RevisionPanel = () => {
 
  // Также нужно записать списания на разницу, чтобы склад выровнялся с фактическим
  if (missingCoal > 0) {
- await addDoc(collection(db, 'inventory_movements'), {
- type: 'writeoff', item: 'coal', amount: missingCoal, cost: 0, note: `Корректировка ревизии ${dateStr}`, locationId: selectedLocationId, dateStr, createdAt: serverTimestamp()
- });
+   await addDoc(collection(db, 'inventory_movements'), {
+     type: 'writeoff', item: 'coal', amount: missingCoal, cost: 0, note: `Недостача ревизии ${dateStr}`, locationId: selectedLocationId, dateStr, createdAt: serverTimestamp()
+   });
+ } else if (missingCoal < 0) {
+   await addDoc(collection(db, 'inventory_movements'), {
+     type: 'in', item: 'coal', amount: Math.abs(missingCoal), cost: 0, note: `Профицит ревизии ${dateStr}`, locationId: selectedLocationId, dateStr, createdAt: serverTimestamp()
+   });
  }
+ 
  if (missingTobacco > 0) {
- await addDoc(collection(db, 'inventory_movements'), {
- type: 'writeoff', item: 'tobacco', amount: missingTobacco, cost: 0, note: `Корректировка ревизии ${dateStr}`, locationId: selectedLocationId, dateStr, createdAt: serverTimestamp()
- });
+   await addDoc(collection(db, 'inventory_movements'), {
+     type: 'writeoff', item: 'tobacco', amount: missingTobacco, cost: 0, note: `Недостача ревизии ${dateStr}`, locationId: selectedLocationId, dateStr, createdAt: serverTimestamp()
+   });
+ } else if (missingTobacco < 0) {
+   await addDoc(collection(db, 'inventory_movements'), {
+     type: 'in', item: 'tobacco', amount: Math.abs(missingTobacco), cost: 0, note: `Профицит ревизии ${dateStr}`, locationId: selectedLocationId, dateStr, createdAt: serverTimestamp()
+   });
  }
 
  alert('Ревизия проведена успешно! Склад выровнен.');

@@ -13,7 +13,13 @@ export const useInventoryData = () => {
 
  // Склад считается кумулятивно за ВСЁ время
  const allClosedShifts = useMemo(() => allShifts.filter(s => s.status === 'closed' && s.locationId === selectedLocationId), [allShifts, selectedLocationId]);
- const totalBowls = useMemo(() => allClosedShifts.reduce((a, s) => a + (s.items?.cocktail1 || 0) + (s.items?.cocktail2 || 0) + (s.staffHookahs || 0), 0), [allClosedShifts]);
+ const totalBowls = useMemo(() => allClosedShifts.reduce((a, s) => {
+    let itemsCount = 0;
+    if (s.items) {
+      Object.values(s.items).forEach(v => { itemsCount += (Number(v) || 0); });
+    }
+    return a + itemsCount + (s.staffHookahs || 0);
+  }, 0), [allClosedShifts]);
  
  const autoCoalUsed = totalBowls * (invStandards.coalPerBowl || 0);
  const autoTobaccoUsed = totalBowls * (invStandards.tobaccoPerBowl || 0);

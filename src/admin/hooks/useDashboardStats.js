@@ -70,16 +70,33 @@ export const useDashboardStats = () => {
    }
  });
 
- const baseEarned = closedShifts.reduce((sum, s) => sum + (s.earned || 0), 0);
- const baseSalaryTotal = closedShifts.reduce((sum, s) => sum + (s.baseSalary || 0), 0);
- const hookahPercentageTotal = closedShifts.reduce((sum, s) => sum + (s.hookahPercentage || 0), 0); // legacy
- const shiftsCount = closedShifts.reduce((sum, s) => sum + (s.shiftFraction || 1), 0);
+  const baseEarned = closedShifts.reduce((sum, s) => sum + (s.earned || 0), 0);
+  const baseSalaryTotal = closedShifts.reduce((sum, s) => sum + (s.baseSalary || 0), 0);
+  const hookahPercentageTotal = closedShifts.reduce((sum, s) => sum + (s.hookahPercentage || 0), 0); // legacy
+  const shiftsCount = closedShifts.reduce((sum, s) => sum + (s.shiftFraction || 1), 0);
 
- const totalRevisionDeductions = Math.round(revisions
- .filter(r => (month === 'all' || r.month === month) && (selectedLocationId === 'all' || r.locationId === selectedLocationId))
- .reduce((sum, r) => sum + (r.deductions?.[empId] || 0), 0));
+  const earningsByLocation = {};
+  closedShifts.forEach(s => {
+    const locId = s.locationId || 'unknown';
+    if (!earningsByLocation[locId]) earningsByLocation[locId] = { earned: 0, deductions: 0 };
+    earningsByLocation[locId].earned += (s.earned || 0);
+  });
 
- const totalEarned = Math.round(baseEarned - totalRevisionDeductions);
+  const totalRevisionDeductions = Math.round(revisions
+  .filter(r => (month === 'all' || r.month === month) && (selectedLocationId === 'all' || r.locationId === selectedLocationId))
+  .reduce((sum, r) => {
+    const ded = r.deductions?.[empId] || 0;
+    const locId = r.locationId || 'unknown';
+    if (!earningsByLocation[locId]) earningsByLocation[locId] = { earned: 0, deductions: 0 };
+    earningsByLocation[locId].deductions += ded;
+    return sum + ded;
+  }, 0));
+
+  Object.keys(earningsByLocation).forEach(locId => {
+    earningsByLocation[locId].net = Math.round(earningsByLocation[locId].earned - earningsByLocation[locId].deductions);
+  });
+
+  const totalEarned = Math.round(baseEarned - totalRevisionDeductions);
 
  return {
  totalEarned,
@@ -87,13 +104,15 @@ export const useDashboardStats = () => {
  totalRevisionDeductions,
  baseSalaryTotal,
  hookahPercentageTotal,
- hookahs: totalItemsCount, // mapping all items to hookahs for UI backward comp
- replacements: 0,
- totalItems: totalItemsCount,
- shiftsCount,
- hasOpenShift,
- ownerNetProfit
- };
+  hookahs: totalItemsCount, // mapping all items to hookahs for UI backward comp
+  replacements: 0,
+  totalItems: totalItemsCount,
+  shiftsCount,
+  hasOpenShift,
+  ownerNetProfit,
+  earningsByLocation,
+  closedShifts
+  };
  }, [allShifts, ownerProfits, selectedMonth, selectedLocationId, revisions, positions]);
 
   const closedSystemShifts = useMemo(() => {

@@ -9,12 +9,13 @@ import { db } from '../../firebase';
 import * as XLSX from 'xlsx';
 
 const TeamTab = () => {
- const { subTab, setSubTab, employees } = useAdmin();
+ const { subTab, setSubTab, employees, locations, positions } = useAdmin();
  const { availableMonths, selectedMonth, setSelectedMonth, calculateEmployeeStats } = useDashboardStats();
 
  const [newEmpName, setNewEmpName] = useState('');
  const [newEmpPin, setNewEmpPin] = useState('');
  const [isAdding, setIsAdding] = useState(false);
+ const [selectedEmployeeShifts, setSelectedEmployeeShifts] = useState(null);
   
  const [editingEmp, setEditingEmp] = useState(null);
  const [editForm, setEditForm] = useState({ name: '', pin: '', baseSalary: 3000, hookahPercentage: 1500, strictSalary: false });
@@ -84,6 +85,58 @@ const TeamTab = () => {
         <button onClick={(e) => { setSubTab('staff'); e.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); }} className={`px-5 py-2.5 rounded-2xl font-bold text-sm transition-all whitespace-nowrap ${subTab === 'staff' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-300/50'}`}>Персонал</button>
       </div>
 
+ {selectedEmployeeShifts && (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-[32px] w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-slate-100">
+          <h2 className="text-xl font-black text-slate-900">Смены: {selectedEmployeeShifts.name}</h2>
+          <button onClick={() => setSelectedEmployeeShifts(null)} className="p-2 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-full transition-colors"><X size={20}/></button>
+        </div>
+        <div className="p-6 overflow-y-auto flex-1 space-y-3">
+          {selectedEmployeeShifts.shifts.length === 0 ? (
+            <div className="text-center p-6 text-slate-400 font-medium">Смен пока не было</div>
+          ) : (
+            selectedEmployeeShifts.shifts.sort((a, b) => {
+              const parseDate = (d) => {
+                if (!d) return 0;
+                const [day, m, y] = d.split('.');
+                return new Date(y, m - 1, day).getTime();
+              };
+              return parseDate(b.dateStr) - parseDate(a.dateStr);
+            }).map(s => {
+              const locName = locations.find(l => l.id === s.locationId)?.name || 'Неизвестная точка';
+              return (
+                <div key={s.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3 hover:bg-white transition-colors">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <p className="font-bold text-slate-900">{s.dateStr}</p>
+                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{locName}</span>
+                    </div>
+                    <p className="text-xs text-slate-500">Заработано: <strong className="text-green-600">{formatMoney(s.earned)} ₸</strong></p>
+                  </div>
+                  <div className="flex gap-4 text-sm text-slate-600 bg-white px-3 py-2 rounded-xl border border-slate-100 shadow-sm flex-wrap">
+                    {s.items && Object.entries(s.items).map(([k, v]) => {
+                       if (v <= 0) return null;
+                       let nm = k;
+                       if (k === 'cocktail1') nm = 'Кальяны';
+                       else if (k === 'cocktail2') nm = 'Замены';
+                       else {
+                         const pos = positions?.find(p => String(p.id).trim() === String(k).trim());
+                         if (pos) nm = pos.name;
+                         else nm = `? ${k.substring(0,4)}...`;
+                       }
+                       return <div key={k} className="flex flex-col"><span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{nm}</span><span className="font-black text-slate-900">{v}</span></div>;
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )}
+
  {(subTab === 'salaries' || !subTab) && (
  <div className="space-y-8">
  <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -95,16 +148,26 @@ const TeamTab = () => {
  </div>
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
  {employees.map(emp => { const stats = calculateEmployeeStats(emp.id, selectedMonth); return (
- <Card variant="elevated" key={emp.id} className="p-8 relative flex flex-col h-full card-hover-effect">
+ <Card variant="elevated" key={emp.id} className="p-8 relative flex flex-col h-full card-hover-effect cursor-pointer" onClick={() => setSelectedEmployeeShifts({ name: emp.name, shifts: stats.closedShifts })}>
  {stats.hasOpenShift && <div className="absolute top-0 left-0 w-full h-1.5 bg-primary animate-pulse"></div>}
  <div className="flex items-center gap-4 mb-6"><div className="w-14 h-14 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-slate-700 font-black text-2xl shadow-inner">{emp.name.charAt(0).toUpperCase()}</div><div><h3 className="text-xl font-black text-slate-900 ">{emp.name}</h3><p className="text-sm text-slate-400 font-medium">{stats.shiftsCount} смен</p></div></div>
  <div className="bg-slate-50 p-5 rounded-2xl mb-6 flex-1 flex flex-col justify-center border border-slate-100">
  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Общая ЗП</p>
  <h4 className="text-4xl font-black text-slate-700">{formatMoney(stats.totalEarned)} ₸</h4>
  <div className="flex flex-col gap-1 mt-3 pt-3 border-t border-slate-200 text-sm">
- <div className="flex justify-between"><span className="text-slate-500 font-medium">Оклад:</span> <strong className="text-slate-900 ">{formatMoney(stats.baseSalaryTotal)} ₸</strong></div>
+ {stats.earningsByLocation && Object.keys(stats.earningsByLocation).map(locId => {
+   const locName = locations.find(l => l.id === locId)?.name || 'Неизвестная точка';
+   const net = stats.earningsByLocation[locId].net || 0;
+   if (net === 0 && stats.earningsByLocation[locId].earned === 0) return null;
+   return (
+     <div key={locId} className="flex justify-between py-1">
+       <span className="text-slate-500 font-medium">{locName}:</span> 
+       <strong className="text-slate-900">{formatMoney(net)} ₸</strong>
+     </div>
+   );
+ })}
  {stats.totalRevisionDeductions > 0 && (
- <div className="flex justify-between mt-1 pt-1 border-t border-red-100"><span className="text-red-400 font-medium">Удержания (ревизия):</span> <strong className="text-red-500">-{formatMoney(stats.totalRevisionDeductions)} ₸</strong></div>
+ <div className="flex justify-between mt-1 pt-2 border-t border-red-100"><span className="text-red-400 font-medium">Удержания (ревизия):</span> <strong className="text-red-500">-{formatMoney(stats.totalRevisionDeductions)} ₸</strong></div>
  )}
  </div>
  </div>
